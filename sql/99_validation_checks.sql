@@ -76,6 +76,37 @@ INSERT #check SELECT 'duplicate metro_month keys', '0',
 -- No month after the latest home-value month (decision 0004).
 INSERT #check SELECT 'latest month_end', '2026-09-30', (SELECT CONVERT(NVARCHAR(10), MAX(month_end), 23) FROM core.metro_month);
 
+/* ---------- Question 1: home value growth (Task 6) ---------- */
+
+-- Year-over-year % for the U.S. and the two extremes among the 100 largest metros, Sep 2026.
+INSERT #check SELECT 'US yoy 2026-09', '1.19',
+    (SELECT CAST(CAST(ROUND(yoy_pct, 2) AS DECIMAL(9, 2)) AS NVARCHAR(30)) FROM rpt.v_home_value_growth WHERE metro_id = 102001 AND month_end = '2026-09-30');
+INSERT #check SELECT 'Syracuse yoy 2026-09', '6.62',
+    (SELECT CAST(CAST(ROUND(yoy_pct, 2) AS DECIMAL(9, 2)) AS NVARCHAR(30)) FROM rpt.v_home_value_growth WHERE metro_id = 395143 AND month_end = '2026-09-30');
+INSERT #check SELECT 'Austin yoy 2026-09', '-4.31',
+    (SELECT CAST(CAST(ROUND(yoy_pct, 2) AS DECIMAL(9, 2)) AS NVARCHAR(30)) FROM rpt.v_home_value_growth WHERE metro_id = 394355 AND month_end = '2026-09-30');
+
+-- Fastest and slowest of the large metros (size_rank 1-100) in the latest month.
+INSERT #check SELECT 'top large metro 2026-09', 'Syracuse, NY',
+    (SELECT TOP (1) m.metro_name FROM rpt.v_home_value_growth AS g JOIN core.metro AS m ON m.metro_id = g.metro_id
+     WHERE g.month_end = '2026-09-30' AND m.size_rank BETWEEN 1 AND 100 AND g.yoy_pct IS NOT NULL ORDER BY g.yoy_pct DESC);
+INSERT #check SELECT 'bottom large metro 2026-09', 'Austin, TX',
+    (SELECT TOP (1) m.metro_name FROM rpt.v_home_value_growth AS g JOIN core.metro AS m ON m.metro_id = g.metro_id
+     WHERE g.month_end = '2026-09-30' AND m.size_rank BETWEEN 1 AND 100 AND g.yoy_pct IS NOT NULL ORDER BY g.yoy_pct ASC);
+INSERT #check SELECT 'large metros with yoy 2026-09', '97',
+    (SELECT COUNT(*) FROM rpt.v_home_value_growth AS g JOIN core.metro AS m ON m.metro_id = g.metro_id
+     WHERE g.month_end = '2026-09-30' AND m.size_rank BETWEEN 1 AND 100 AND g.yoy_pct IS NOT NULL);
+
+-- Rows with a yoy value, counted independently in Python (gaps must give NULL, Review Focus 3).
+INSERT #check SELECT 'rows with home value yoy', '226857', (SELECT COUNT(yoy_pct) FROM rpt.v_home_value_growth);
+
+-- No yoy value may exist where the month exactly 12 months back has no home value (Review Focus 3).
+INSERT #check SELECT 'gap months with yoy', '0',
+    (SELECT COUNT(*) FROM rpt.v_home_value_growth AS g
+     WHERE g.yoy_pct IS NOT NULL
+       AND NOT EXISTS (SELECT 1 FROM core.metro_month AS p
+                       WHERE p.metro_id = g.metro_id AND p.month_end = EOMONTH(g.month_end, -12) AND p.home_value IS NOT NULL));
+
 /* ---------- Report ---------- */
 
 -- Show every check, failures first.
