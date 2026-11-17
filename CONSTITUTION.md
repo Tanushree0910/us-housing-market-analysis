@@ -18,8 +18,9 @@ If anything else in the repo disagrees with this document, this document wins.
 
 1. `data/` holds raw source files exactly as they were downloaded.
 2. Raw files are never edited, renamed or deleted without the owner's approval.
-3. Every raw file has a row in `data/SOURCES.md` with its file name, source, URL, date added and SHA-256 fingerprint. The fingerprint proves the file has not been changed.
-4. Cleaned or derived data is produced by SQL. It is never saved over a raw file.
+3. The owner chooses and downloads raw data. An agent may copy a file the owner downloaded into `data/` unchanged, under its original name, and commit, push and pull it with git.
+4. Every raw file has a row in `data/SOURCES.md` with its file name, source, URL, date added and SHA-256 fingerprint. The fingerprint proves the file has not been changed.
+5. Cleaned or derived data is produced by SQL. It is never saved over a raw file.
 
 ## Article 3 — Folders and naming
 
@@ -69,4 +70,4 @@ If anything else in the repo disagrees with this document, this document wins.
 
 ---
 
-Version 1.1 — amended 2026-11-17 (decision 0002) — amendments are recorded in `docs/decisions/`.
+Version 1.2 — amended 2026-11-17 (decisions 0002, 0003) — amendments are recorded in `docs/decisions/`.

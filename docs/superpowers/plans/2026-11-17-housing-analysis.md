@@ -20,7 +20,7 @@
 - Page names, in order: `Overview`, `1 · Growth`, `2 · Rent vs price`, `3 · Supply`.
 - "Large metros" means `size_rank BETWEEN 1 AND 100`. "Latest month" means `2026-09-30`.
 - After each task: run `python3 tools/governance_check.py` and `python3 -m unittest discover -s tests -t .`, add a test log in `logs/tests/`, then commit.
-- Text files are written in the cloud repo and copied to the PC with `_host`. Files that Power BI saves are read back into the repo. Binary files (`.pbix`, `.png`) reach the repo only through the owner's GitHub upload.
+- Text files are written in the cloud repo and copied to the PC with `_host`. Files that Power BI saves are read back into the repo. Binary files (`.pbix`, `.png`) are committed and pushed from the PC clone (decision 0003); text files may be too.
 
 ## Review Focus
 
@@ -32,15 +32,11 @@
 
 ---
 
-### Task 0: Owner setup (owner does these steps; agent guides)
+### Task 0: Owner setup and PC git
 
-- [ ] **Step 1:** The owner uploads the two new Zillow files to GitHub:
-  1. Open https://github.com/tanushree0910/us-housing-market-analysis/tree/claude/charming-rubin-9jw9w3/data
-  2. Click **Add file → Upload files**.
-  3. Drag in both files from Desktop\housing data, without renaming them.
-  4. Choose **Commit directly to the claude/charming-rubin-9jw9w3 branch**, then click **Commit changes**.
-- [ ] **Step 2:** The agent runs `git pull origin claude/charming-rubin-9jw9w3` and confirms that `data/` holds 4 CSVs. The checker reports exactly 2 problems, the 2 missing SOURCES rows (fixed in Task 2).
-- [ ] **Step 3:** The owner turns on the computer connection: Claude desktop app → Settings → Claude Code → Remote Control, and adds the `housing data` folder. The agent calls `list_computer_folders` and then `request_computer_folder`, and the owner approves.
+- [ ] **Step 1:** The owner connects the PC: in the Claude desktop app, go to Settings → Claude Code → Remote Control and add the `housing data` folder. The agent calls `list_computer_folders` and then `request_computer_folder`, and the owner approves.
+- [ ] **Step 2:** The agent checks `git --version` on the PC and that git can reach GitHub (`git ls-remote https://github.com/tanushree0910/us-housing-market-analysis`). If git is missing or not signed in, ask the owner before installing or signing in.
+- [ ] **Step 3:** Clone the repo into the shared folder (`housing data\us-housing-market-analysis`) and check out `claude/charming-rubin-9jw9w3`. Copy the two new Zillow files the owner downloaded into its `data/` unchanged. Commit and push from the PC (decision 0003). In the cloud repo, pull. Expected: `data/` holds 4 CSVs, and the checker reports exactly 2 problems, the missing SOURCES rows (fixed in Task 2).
 
 ### Task 1: Constitution amendment and checker support for Power BI Project files
 
@@ -90,10 +86,10 @@ def test_powerbi_other_file_type_flagged(self):
 
 **Files:**
 - Modify: `data/SOURCES.md` (2 rows)
-- Create: `docs/decisions/0003-zillow-only-data.md` (Status `Accepted`: Redfin dropped; question 3 uses Zillow inventory and days to pending)
+- Create: `docs/decisions/0004-zillow-only-data.md` (Status `Accepted`: Redfin dropped; question 3 uses Zillow inventory and days to pending)
 
 - [ ] **Step 1:** Run `python3 tools/governance_check.py`. Expected: FAIL, naming both new CSVs as having no SOURCES row.
-- [ ] **Step 2:** For each new file, add a row with Source `Zillow Research — For-Sale Inventory, metro, monthly, smoothed` or `Zillow Research — Days to Pending, metro, monthly, smoothed`, URL `https://www.zillow.com/research/data/`, Added = upload date, and SHA-256 from `python3 tools/governance_check.py --fingerprint data/<file>`.
+- [ ] **Step 2:** For each new file, add a row with Source `Zillow Research — For-Sale Inventory, metro, monthly, smoothed` or `Zillow Research — Days to Pending, metro, monthly, smoothed`, URL `https://www.zillow.com/research/data/`, Added = the date it is committed, and SHA-256 from `python3 tools/governance_check.py --fingerprint data/<file>`.
 - [ ] **Step 3:** Generate this task's reference numbers. Use a Python script in the scratchpad (stdlib `csv`, `encoding='utf-8-sig'`), run on the 2 new files, and print: row count, number of month columns, first month, non-empty value count, distinct RegionID count across all 4 files, and the U.S. (RegionID 102001) values for `2026-09-30` and `2025-09-30`. Paste the output into the test log `logs/tests/YYYY-MM-DD-new-raw-files.md`. Tasks 4–8 use these numbers.
 - [ ] **Step 4:** Run the checker and the tests (expected PASS), then commit: `data: register Zillow inventory and days-to-pending files`.
 
@@ -297,18 +293,18 @@ No repo code. Output: test log `logs/tests/YYYY-MM-DD-pc-environment.md`.
 ### Task 12: .pbix copy and screenshots
 
 **Files:**
-- Create (owner upload): `powerbi/us_housing_market.pbix`
-- Create (owner upload): `screenshots/overview.png`, `screenshots/growth.png`, `screenshots/rent-vs-price.png`, `screenshots/supply.png`
+- Create (pushed from the PC clone): `powerbi/us_housing_market.pbix`
+- Create (pushed from the PC clone): `screenshots/overview.png`, `screenshots/growth.png`, `screenshots/rent-vs-price.png`, `screenshots/supply.png`
 
 - [ ] **Step 1:** In Power BI, choose File → Save as → `us_housing_market.pbix` in the PC folder. Check that it's under 50 MB.
 - [ ] **Step 2:** For each page, maximise Power BI, hide the panes, and show the page. Then run a PowerShell `System.Drawing` screen capture of the report canvas into the PC folder, using the PNG names above. Look at each image and check it's sharp and not cut off.
-- [ ] **Step 3:** The owner uploads the 5 files to the branch, the same way as in Task 0 Step 1: the `.pbix` to `powerbi/` and the PNGs to `screenshots/`. The agent pulls. Expected: the checker and the tests PASS. Write the test log, then commit.
+- [ ] **Step 3:** Commit and push the 5 files from the PC clone, then pull in the cloud repo. Expected: the checker and the tests PASS. Write the test log, then commit.
 
 ### Task 13: Findings and README
 
 **Files:**
 - Modify: `README.md` (Findings section, screenshots, "How to run it", "Skills shown")
-- Modify: Overview takeaways text box (Task 11 files), then redo the `overview.png` capture and upload from Task 12
+- Modify: Overview takeaways text box (Task 11 files), then redo the `overview.png` capture and push from Task 12
 
 - [ ] **Step 1:** Write 3 to 5 takeaways, each backed by a number in `99_validation_checks.sql`, e.g. "Since Sep 2015 U.S. home values rose 88% while rents rose 64%".
 - [ ] **Step 2:** In the README:

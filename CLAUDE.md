@@ -30,4 +30,4 @@ cd "$CLAUDE_PROJECT_DIR" && python3 -m unittest discover -s tests -t .
 The same checks run on GitHub for every push, and their results show on pull requests.
 
 ## Adding raw data
-Adding or replacing raw data is the owner's job. If new data is needed, ask the owner to put the file in `data/` under its original name. Then add its row to `data/SOURCES.md`, with the fingerprint from `python3 tools/governance_check.py --fingerprint data/<file>`. Use this rather than `sha256sum`, because the check ignores Windows line endings.
+The owner chooses and downloads raw data (CONSTITUTION.md Article 2). You may copy a file the owner downloaded into `data/` unchanged, under its original name, then commit, push and pull it with git. Never edit, rename, re-save or replace it. Add its row to `data/SOURCES.md`, with the fingerprint from `python3 tools/governance_check.py --fingerprint data/<file>`. Use this rather than `sha256sum`, because the check ignores Windows line endings. If you need data the owner hasn't downloaded, ask them for it.
