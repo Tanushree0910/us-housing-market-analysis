@@ -127,6 +127,26 @@ INSERT #check SELECT 'lowest large metro rent_to_price', 'San Jose, CA (3.00)',
      FROM rpt.v_rent_to_price AS r JOIN core.metro AS m ON m.metro_id = r.metro_id
      WHERE r.month_end = '2026-09-30' AND m.size_rank BETWEEN 1 AND 100 ORDER BY r.rent_to_price_pct ASC);
 
+/* ---------- Question 3: supply vs price (Task 8) ---------- */
+
+-- One row per metro-month with inventory or days to pending; yoy only where the exact month a year back exists.
+INSERT #check SELECT 'supply rows', '94418', (SELECT COUNT(*) FROM rpt.v_supply_vs_price);
+INSERT #check SELECT 'rows with inventory yoy', '83188', (SELECT COUNT(inventory_yoy_pct) FROM rpt.v_supply_vs_price);
+
+-- U.S. values, Sep 2026.
+INSERT #check SELECT 'US inventory_yoy 2026-09', '2.5063',
+    (SELECT CAST(inventory_yoy_pct AS NVARCHAR(30)) FROM rpt.v_supply_vs_price WHERE metro_id = 102001 AND month_end = '2026-09-30');
+INSERT #check SELECT 'US days_to_pending 2026-09 (change)', '56 (2)',
+    (SELECT CONCAT(days_to_pending, N' (', days_to_pending_yoy_change, N')') FROM rpt.v_supply_vs_price WHERE metro_id = 102001 AND month_end = '2026-09-30');
+
+-- Pearson correlations across large metros, Sep 2026 (computed independently in Python).
+INSERT #check SELECT 'correlation metros 2026-09', '97',
+    (SELECT CAST(metros AS NVARCHAR(30)) FROM rpt.v_supply_price_correlation WHERE month_end = '2026-09-30');
+INSERT #check SELECT 'r inventory vs price 2026-09', '0.2968',
+    (SELECT CAST(r_inventory_vs_price AS NVARCHAR(30)) FROM rpt.v_supply_price_correlation WHERE month_end = '2026-09-30');
+INSERT #check SELECT 'r days vs price 2026-09', '0.0624',
+    (SELECT CAST(r_days_vs_price AS NVARCHAR(30)) FROM rpt.v_supply_price_correlation WHERE month_end = '2026-09-30');
+
 /* ---------- Report ---------- */
 
 -- Show every check, failures first.
