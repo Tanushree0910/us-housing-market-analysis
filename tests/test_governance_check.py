@@ -312,6 +312,30 @@ class CheckerAccuracyTests(unittest.TestCase):
             self.assertEqual(gc.main(["--fingerprint", str(path)]), 0)
         self.assertEqual(out.getvalue().strip(), sha("1,2\n3,4\n"))
 
+    def test_sources_without_table_is_fine_when_no_csvs(self):
+        self.repo.write("data/SOURCES.md", "# Data sources\n\nNo files yet.\n")
+        self.assertEqual(gc.check_data_manifest(self.repo.root), [])
+
+    def test_wrong_header_is_reported_once(self):
+        self.repo.write("data/a.csv", "1,2")
+        self.repo.write("data/b.csv", "3,4")
+        self.repo.write("data/SOURCES.md", "| file | SHA256 |\n|---|---|\n")
+        problems = gc.check_data_manifest(self.repo.root)
+        self.assertEqual(len(problems), 1, problems)
+        self.assertIn("header", problems[0])
+
+    def test_nested_git_repo_folder_flagged(self):
+        import subprocess
+        subprocess.run(["git", "init", "-q"], cwd=self.repo.root, check=True)
+        self.repo.write("stray/x.txt")
+        subprocess.run(["git", "init", "-q"], cwd=self.repo.root / "stray", check=True)
+        problems = gc.check_layout(self.repo.root)
+        self.assertEqual(len(problems), 1, problems)
+        self.assertIn("stray", problems[0])
+        self.repo.write("logs/sessions/inner/y.md")
+        subprocess.run(["git", "init", "-q"], cwd=self.repo.root / "logs/sessions/inner", check=True)
+        self.assertTrue(any("inner" in p for p in gc.check_records(self.repo.root)))
+
     def test_non_git_folder_still_walked(self):
         self.repo.write("notes.txt")
         self.assertEqual(len(gc.check_layout(self.repo.root)), 1)

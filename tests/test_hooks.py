@@ -239,6 +239,33 @@ class GuardPrecisionTests(unittest.TestCase):
         self.assertEqual(decision(self.bash("git commit -m 'note <<EOF'\nrm data/a.csv")), "deny")
         self.assertIsNone(self.bash("cat <<-EOF > /tmp/x\n\trm data/a.csv\n\tEOF"))
 
+    def test_guard_closes_remaining_gaps(self):
+        for command in ("for f in x; do rm data/a.csv; done",
+                        "if true; then rm data/a.csv; fi",
+                        "{ rm data/a.csv; }",
+                        "! rm data/a.csv",
+                        "sudo -u bob rm data/a.csv",
+                        "git -C /proj rm data/a.csv",
+                        "time -p rm data/a.csv",
+                        "nice -n 5 rm data/a.csv",
+                        "curl -odata/a.csv https://x",
+                        "wget -Odata/a.csv https://x",
+                        "cd data && rm a.csv",
+                        "cd /proj/data; truncate -s0 a.csv",
+                        "perl -pi -e 's/a/b/' data/a.csv",
+                        "find data -name '*.csv' -delete",
+                        "find . -name '*.csv' -exec rm {} +"):
+            self.assertEqual(decision(self.bash(command)), "deny", command)
+
+    def test_guard_remaining_gap_fixes_do_not_overblock(self):
+        for command in ("cd sql && rm a.csv",
+                        "cd data && head a.csv",
+                        "find /tmp -name '*.csv' -delete",
+                        "find data -name '*.csv'",
+                        "perl -ne 'print' data/a.csv",
+                        "for f in data/*.csv; do wc -l $f; done"):
+            self.assertIsNone(self.bash(command), command)
+
     def test_guard_denies_uppercase_csv(self):
         self.assertEqual(decision(self.bash("truncate -s0 data/X.CSV")), "deny")
         self.assertEqual(decision(guard.decide(

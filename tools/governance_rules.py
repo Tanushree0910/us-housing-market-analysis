@@ -57,7 +57,9 @@ def _git_files(root: Path) -> list[Path] | None:
     if out.returncode != 0:
         return None
     names = out.stdout.decode("utf-8", errors="replace").split("\0")
-    return [Path(n) for n in names if n and (root / n).is_file()]
+    # git lists a folder holding its own separate repo as "name/"; keep it so it gets checked.
+    return [Path(n.rstrip("/")) for n in names
+            if n and ((root / n).is_file() or (n.endswith("/") and (root / n).is_dir()))]
 
 
 def iter_files(root: Path) -> list[Path]:
@@ -105,6 +107,10 @@ def _source_rows(text: str) -> tuple[bool, list[list[str]]]:
         if in_table and not all(set(c) <= set("-: ") for c in cells):
             rows.append(cells)
     return found, rows
+
+
+def has_sources_header(text: str) -> bool:
+    return _source_rows(text)[0]
 
 
 def parse_sources(text: str) -> dict[str, str]:

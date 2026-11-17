@@ -43,7 +43,8 @@ def check_data_manifest(root: Path) -> list[str]:
     """Article 2: every raw file is listed in data/SOURCES.md and unchanged."""
     root = Path(root)
     csvs = sorted(rel.name for rel in rules.iter_files(root)
-                  if len(rel.parts) == 2 and rel.parts[0] == "data" and rel.suffix.lower() == ".csv")
+                  if len(rel.parts) == 2 and rel.parts[0] == "data" and rel.suffix.lower() == ".csv"
+                  and (root / rel).is_file())
     manifest = root / "data" / "SOURCES.md"
     if not manifest.is_file():
         if csvs:
@@ -51,6 +52,9 @@ def check_data_manifest(root: Path) -> list[str]:
         return []
     text = manifest.read_text(encoding="utf-8")
     listed = rules.parse_sources(text)
+    if not rules.has_sources_header(text):
+        # One clear message is enough; listing every file as "not listed" would only add noise.
+        return [f"data/SOURCES.md: {p}" for p in rules.sources_problems(text)] if csvs else []
     problems = [f"data/SOURCES.md: {p}" for p in rules.sources_problems(text)]
     for name in csvs:
         if name not in listed:
@@ -72,7 +76,11 @@ def check_records(root: Path) -> list[str]:
         if rel.name == ".gitkeep":
             continue
         folder = rel.parent.as_posix()
-        if folder in rules.RECORD_TYPES:
+        if (root / rel).is_dir():
+            if rel.parts[0] == "logs" or rel_str.startswith("docs/decisions/"):
+                problems.append(f"{rel_str}: is a separate project folder; records must be single files "
+                                f"directly in one of {', '.join(sorted(rules.RECORD_TYPES))} (Article 4)")
+        elif folder in rules.RECORD_TYPES:
             text = (root / rel).read_text(encoding="utf-8", errors="replace")
             problems += rules.record_problems(folder, rel.name, text)
         elif rel.parts[0] == "logs" or rel_str.startswith("docs/decisions/"):

@@ -4,7 +4,7 @@
 The nine minor fixes from the final review: raw-data guard precision, upper-case `.CSV`, symlinked project folders, `SOURCES.md` format messages, files starting with a byte-order mark, git-ignored clutter, stop-hook retries, and the CI workflow trigger and permissions.
 
 ## How
-`python3 -m unittest discover -s tests -t .` (70 tests: 16 new for these fixes, plus 4 for the follow-up fixes from the second review) and `python3 tools/governance_check.py` on the real repo.
+`python3 -m unittest discover -s tests -t .` (75 tests: 16 new for these fixes, 4 for the follow-ups from the second review, and 5 for the last small issues) and `python3 tools/governance_check.py` on the real repo.
 
 ## Result
 PASS
