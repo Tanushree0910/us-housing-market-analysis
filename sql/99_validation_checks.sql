@@ -107,6 +107,26 @@ INSERT #check SELECT 'gap months with yoy', '0',
        AND NOT EXISTS (SELECT 1 FROM core.metro_month AS p
                        WHERE p.metro_id = g.metro_id AND p.month_end = EOMONTH(g.month_end, -12) AND p.home_value IS NOT NULL));
 
+/* ---------- Question 2: rent-to-price (Task 7) ---------- */
+
+-- Only metro-months with both a home value and a rent appear.
+INSERT #check SELECT 'rent_to_price rows', '53095', (SELECT COUNT(*) FROM rpt.v_rent_to_price);
+INSERT #check SELECT 'rent_to_price rows 2026-09', '728', (SELECT COUNT(*) FROM rpt.v_rent_to_price WHERE month_end = '2026-09-30');
+
+-- Yearly rent as a % of home value for the U.S., Sep 2026.
+INSERT #check SELECT 'US rent_to_price 2026-09', '6.33',
+    (SELECT CAST(CAST(ROUND(rent_to_price_pct, 2) AS DECIMAL(9, 2)) AS NVARCHAR(30)) FROM rpt.v_rent_to_price WHERE metro_id = 102001 AND month_end = '2026-09-30');
+
+-- Highest and lowest among the 100 largest metros, Sep 2026, as "name (pct)".
+INSERT #check SELECT 'highest large metro rent_to_price', 'Jackson, MS (8.31)',
+    (SELECT TOP (1) m.metro_name + N' (' + CAST(CAST(ROUND(r.rent_to_price_pct, 2) AS DECIMAL(9, 2)) AS NVARCHAR(30)) + N')'
+     FROM rpt.v_rent_to_price AS r JOIN core.metro AS m ON m.metro_id = r.metro_id
+     WHERE r.month_end = '2026-09-30' AND m.size_rank BETWEEN 1 AND 100 ORDER BY r.rent_to_price_pct DESC);
+INSERT #check SELECT 'lowest large metro rent_to_price', 'San Jose, CA (3.00)',
+    (SELECT TOP (1) m.metro_name + N' (' + CAST(CAST(ROUND(r.rent_to_price_pct, 2) AS DECIMAL(9, 2)) AS NVARCHAR(30)) + N')'
+     FROM rpt.v_rent_to_price AS r JOIN core.metro AS m ON m.metro_id = r.metro_id
+     WHERE r.month_end = '2026-09-30' AND m.size_rank BETWEEN 1 AND 100 ORDER BY r.rent_to_price_pct ASC);
+
 /* ---------- Report ---------- */
 
 -- Show every check, failures first.
