@@ -15,6 +15,8 @@ def check_layout(root: Path) -> list[str]:
             problems.append(f"{rel.as_posix()}: '{top}' is not an allowed top-level item (CONSTITUTION.md Article 3)")
             continue
         if top in rules.FOLDER_RULES:
+            if top == "powerbi" and len(rel.parts) > 2 and rules.POWERBI_PROJECT_DIR.match(rel.parts[1]):
+                continue
             if len(rel.parts) != 2:
                 problems.append(f"{rel.as_posix()}: '{top}/' must not contain sub-folders (Article 3)")
             elif not rules.FOLDER_RULES[top].match(rel.name):

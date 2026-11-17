@@ -17,7 +17,7 @@ SQL Server, SSMS, Power BI Desktop
 ## Repo structure
 - `/data` raw source files
 - `/sql` queries and views
-- `/powerbi` Power BI report (.pbix)
+- `/powerbi` Power BI report: project files (.pbip) and a .pbix copy
 - `/screenshots` dashboard images
 - `/docs` decision records, templates and plans
 - `/logs` session journals, bug logs and test logs

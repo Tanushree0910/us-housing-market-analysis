@@ -8,3 +8,5 @@ desktop.ini
 .idea/
 .venv/
 ~$*
+powerbi/**/.pbi/localSettings.json
+powerbi/**/.pbi/cache.abf
