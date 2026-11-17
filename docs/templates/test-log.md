@@ -1,4 +1,4 @@
-<!-- Save as logs/tests/YYYY-MM-DD-kebab-title.md. Replace every _TBD_. -->
+<!-- Save as logs/tests/YYYY-MM-DD-kebab-title.md. Replace every placeholder before saving. -->
 # Test: _TBD_ short title
 
 ## What was tested

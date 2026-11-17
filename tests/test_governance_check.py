@@ -216,5 +216,40 @@ class RecordTests(unittest.TestCase):
         self.assertTrue(any("logs/notes.md" in p for p in gc.check_repo(self.repo.root)))
 
 
+class ReviewFixTests(unittest.TestCase):
+    def setUp(self):
+        self.repo = TempRepo()
+
+    def tearDown(self):
+        self.repo.cleanup()
+
+    def test_no_compiled_python_tracked(self):
+        import subprocess
+        from tests.helpers import REPO
+        tracked = subprocess.run(["git", "ls-files"], cwd=REPO, capture_output=True, text=True).stdout
+        self.assertNotIn("__pycache__", tracked)
+
+    def test_crlf_copy_of_raw_file_matches_fingerprint(self):
+        self.repo.write("data/a.csv", "1,2\r\n3,4\r\n")
+        self.repo.write("data/SOURCES.md", HEADER + row("a.csv", sha("1,2\n3,4\n")))
+        self.assertEqual(gc.check_data_manifest(self.repo.root), [])
+
+    def test_filled_template_with_instruction_comment_passes(self):
+        from tests.helpers import REPO
+        filled = {"Open or Fixed": "Open", "PASS or FAIL": "PASS", "Proposed, Accepted or Replaced": "Accepted"}
+        for name, folder, filename in (("session-journal", "logs/sessions", "2026-11-17-abcd1234.md"),
+                                       ("bug-log", "logs/bugs", "BUG-001-x.md"),
+                                       ("test-log", "logs/tests", "2026-11-17-x.md"),
+                                       ("decision", "docs/decisions", "0001-x.md")):
+            lines = (REPO / "docs/templates" / f"{name}.md").read_text().split("\n")
+            out = []
+            for line in lines:
+                if line.startswith("_TBD_"):
+                    rest = line[len("_TBD_"):].strip()
+                    line = filled.get(rest, "Done.")
+                out.append(line.replace("# NNNN: _TBD_", "# 0001:").replace(": _TBD_", ":"))
+            self.assertEqual(gr.record_problems(folder, filename, "\n".join(out)), [], name)
+
+
 if __name__ == "__main__":
     unittest.main()

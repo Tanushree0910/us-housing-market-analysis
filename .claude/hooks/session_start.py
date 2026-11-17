@@ -12,7 +12,8 @@ def decide(payload: dict, project: Path) -> dict:
     if not state_file.exists():
         state_file.parent.mkdir(parents=True, exist_ok=True)
         state = {"date": datetime.date.today().isoformat(),
-                 "head": hooklib.git(project, "rev-parse", "HEAD").strip()}
+                 "head": hooklib.git(project, "rev-parse", "HEAD").strip(),
+                 "status": hooklib.git_status(project)}
         state_file.write_text(json.dumps(state), encoding="utf-8")
     state = hooklib.load_state(project, session_id)
     journal = hooklib.journal_path(project, state["date"], session_id).relative_to(project).as_posix()

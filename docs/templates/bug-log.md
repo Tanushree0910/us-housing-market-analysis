@@ -1,4 +1,4 @@
-<!-- Save as logs/bugs/BUG-NNN-kebab-title.md (next free number). Replace every _TBD_. -->
+<!-- Save as logs/bugs/BUG-NNN-kebab-title.md (next free number). Replace every placeholder before saving. -->
 # BUG-NNN: _TBD_ short title
 
 ## Status

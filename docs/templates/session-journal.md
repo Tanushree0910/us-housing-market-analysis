@@ -1,4 +1,4 @@
-<!-- Save as logs/sessions/YYYY-MM-DD-<first 8 characters of session id>.md. Replace every _TBD_. -->
+<!-- Save as logs/sessions/YYYY-MM-DD-<first 8 characters of session id>.md. Replace every placeholder before saving. -->
 # Session journal
 
 ## Goal

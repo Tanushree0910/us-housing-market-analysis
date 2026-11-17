@@ -54,17 +54,28 @@ def _segment_writes_csv(segment: str) -> bool:
         tokens = shlex.split(segment)
     except ValueError:
         tokens = segment.split()
+    while tokens and tokens[0] in {"sudo", "command", "nohup"}:
+        tokens = tokens[1:]
     if not tokens:
         return False
+    command = os.path.basename(tokens[0])
+    for i, token in enumerate(tokens[1:], start=1):
+        option, _, value = token.partition("=")
+        if value and option in {"of", "--output", "--output-document"} and CSV_TOKEN.search(value):
+            return True
+        nxt = tokens[i + 1] if i + 1 < len(tokens) else ""
+        if CSV_TOKEN.search(nxt) and (
+                (command == "curl" and token in {"-o", "--output"}) or
+                (command == "wget" and token in {"-O", "--output-document"})):
+            return True
     csv_args = [t for t in tokens[1:] if CSV_TOKEN.search(t)]
     if not csv_args:
         return False
-    command = os.path.basename(tokens[0])
     if command in {"rm", "mv", "truncate", "tee", "dd", "shred"}:
         return True
     if command == "git" and len(tokens) > 1 and tokens[1] in {"rm", "mv"}:
         return True
-    if command == "sed" and any(t == "--in-place" or re.match(r"^-[a-zA-Z]*i", t) for t in tokens[1:]):
+    if command == "sed" and any(t.startswith("--in-place") or re.match(r"^-[a-zA-Z]*i", t) for t in tokens[1:]):
         return True
     if command in {"cp", "install", "rsync"} and CSV_TOKEN.search(tokens[-1]):
         return True

@@ -1,4 +1,4 @@
-<!-- Save as docs/decisions/NNNN-kebab-title.md (next free number). Replace every _TBD_. -->
+<!-- Save as docs/decisions/NNNN-kebab-title.md (next free number). Replace every placeholder before saving. -->
 # NNNN: _TBD_ short title
 
 ## Date

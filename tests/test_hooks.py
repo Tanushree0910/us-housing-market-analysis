@@ -192,5 +192,37 @@ class ScriptTests(unittest.TestCase):
         self.assertEqual(json.loads(run.stdout)["hookSpecificOutput"]["permissionDecision"], "deny")
 
 
+class ReviewFixHookTests(unittest.TestCase):
+    def test_guard_denies_download_and_dd_and_sudo_writes(self):
+        for command in ("curl -sL https://x/y.csv -o data/a.csv",
+                        "curl --output data/a.csv https://x",
+                        "wget -O data/a.csv https://x",
+                        "dd if=/tmp/x of=data/a.csv",
+                        "sed --in-place=.bak 's/a/b/' data/a.csv",
+                        "sudo rm data/a.csv"):
+            self.assertEqual(decision(GuardTests().bash(command)), "deny", command)
+
+    def test_guard_allows_download_elsewhere(self):
+        self.assertIsNone(GuardTests().bash("curl -o /tmp/a.csv https://x && head data/a.csv"))
+
+    def test_stop_ignores_changes_that_existed_before_session(self):
+        repo = GitRepo()
+        try:
+            repo.write("sql/01_wip.sql", "owner work in progress")
+            session_start.decide({"session_id": SID}, repo.root)
+            self.assertIsNone(stop_journal.decide({"session_id": SID}, repo.root))
+            repo.write("sql/02_new.sql", "agent work")
+            self.assertEqual(stop_journal.decide({"session_id": SID}, repo.root)["decision"], "block")
+        finally:
+            repo.cleanup()
+
+    def test_settings_hooks_fall_back_to_python(self):
+        settings = json.loads((REPO / ".claude/settings.json").read_text())
+        for event in settings["hooks"].values():
+            for entry in event:
+                for hook in entry["hooks"]:
+                    self.assertIn("|| python ", hook["command"])
+
+
 if __name__ == "__main__":
     unittest.main()

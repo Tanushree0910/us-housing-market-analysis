@@ -3,7 +3,10 @@
     "SessionStart": [
       {
         "hooks": [
-          { "type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/session_start.py\"" }
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/session_start.py\" 2>/dev/null || python \"$CLAUDE_PROJECT_DIR/.claude/hooks/session_start.py\""
+          }
         ]
       }
     ],
@@ -11,14 +14,20 @@
       {
         "matcher": "Edit|Write|MultiEdit|NotebookEdit|Bash",
         "hooks": [
-          { "type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard.py\"" }
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard.py\" 2>/dev/null || python \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard.py\""
+          }
         ]
       }
     ],
     "Stop": [
       {
         "hooks": [
-          { "type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/stop_journal.py\"" }
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/stop_journal.py\" 2>/dev/null || python \"$CLAUDE_PROJECT_DIR/.claude/hooks/stop_journal.py\""
+          }
         ]
       }
     ]

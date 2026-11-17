@@ -40,6 +40,15 @@ def git(project: Path, *args: str) -> str:
         return ""
 
 
+def git_status(project: Path) -> list[str]:
+    """Every changed or new file, one 'XY path' line each."""
+    return _lines(git(project, "status", "--porcelain", "--untracked-files=all"))
+
+
+def _lines(text: str) -> list[str]:
+    return [line for line in text.splitlines() if line.strip()]
+
+
 def run(handler) -> None:
     """Read the hook payload, call handler(payload, project), print its JSON answer.
 

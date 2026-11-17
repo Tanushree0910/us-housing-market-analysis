@@ -5,8 +5,10 @@ import hooklib
 
 
 def _changed(project: Path, state: dict, journal_rel: str) -> bool:
-    status = hooklib.git(project, "status", "--porcelain", "--untracked-files=all")
-    for line in status.splitlines():
+    before = set(state.get("status", []))
+    for line in hooklib.git_status(project):
+        if line in before:
+            continue
         path = line[3:].strip().strip('"')
         if path == journal_rel or path.startswith(".claude/state/"):
             continue

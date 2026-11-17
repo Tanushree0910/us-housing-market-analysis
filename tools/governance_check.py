@@ -34,11 +34,9 @@ def check_sizes(root: Path) -> list[str]:
 
 
 def _sha256(path: Path) -> str:
-    digest = hashlib.sha256()
-    with open(path, "rb") as handle:
-        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
+    """Fingerprint with Windows line endings treated as Unix ones, so a
+    Windows checkout of an untouched file still matches."""
+    return hashlib.sha256(Path(path).read_bytes().replace(b"\r\n", b"\n")).hexdigest()
 
 
 def check_data_manifest(root: Path) -> list[str]:
