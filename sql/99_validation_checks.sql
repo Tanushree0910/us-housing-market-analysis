@@ -45,6 +45,37 @@ INSERT #check SELECT 'first column of raw.zhvi_wide', 'RegionID',
 INSERT #check SELECT 'US zhvi last month value', '366157.1523869674', (SELECT [2026-09-30] FROM raw.zhvi_wide WHERE RegionID = 102001);
 INSERT #check SELECT 'US inventory last month value', '1404950.0', (SELECT [2026-10-31] FROM raw.inventory_wide WHERE RegionID = 102001);
 
+/* ---------- Core tables (Task 5) ---------- */
+
+-- Every region from all four files appears once.
+INSERT #check SELECT 'core.metro rows', '928', (SELECT COUNT(*) FROM core.metro);
+
+-- One row per region-month that has any value, up to the latest home-value month (decision 0004).
+INSERT #check SELECT 'core.metro_month rows', '240674', (SELECT COUNT(*) FROM core.metro_month);
+
+-- Non-empty values per measure must equal the non-empty CSV cells (supply files counted to 2026-09-30).
+INSERT #check SELECT 'home_value non-null', '238029', (SELECT COUNT(home_value) FROM core.metro_month);
+INSERT #check SELECT 'rent_monthly non-null', '53977', (SELECT COUNT(rent_monthly) FROM core.metro_month);
+INSERT #check SELECT 'for_sale_inventory non-null', '94391', (SELECT COUNT(for_sale_inventory) FROM core.metro_month);
+INSERT #check SELECT 'days_to_pending non-null', '50769', (SELECT COUNT(days_to_pending) FROM core.metro_month);
+
+-- Spot values for the U.S. row, rounded to cents.
+INSERT #check SELECT 'US home_value 2026-09', '366157.15',
+    (SELECT CAST(home_value AS NVARCHAR(30)) FROM core.metro_month WHERE metro_id = 102001 AND month_end = '2026-09-30');
+INSERT #check SELECT 'US rent 2026-09', '1931.94',
+    (SELECT CAST(rent_monthly AS NVARCHAR(30)) FROM core.metro_month WHERE metro_id = 102001 AND month_end = '2026-09-30');
+INSERT #check SELECT 'US inventory 2026-09', '1407575',
+    (SELECT CAST(for_sale_inventory AS NVARCHAR(30)) FROM core.metro_month WHERE metro_id = 102001 AND month_end = '2026-09-30');
+INSERT #check SELECT 'US days_to_pending 2026-09', '56',
+    (SELECT CAST(days_to_pending AS NVARCHAR(30)) FROM core.metro_month WHERE metro_id = 102001 AND month_end = '2026-09-30');
+
+-- The primary key should make duplicates impossible; check anyway.
+INSERT #check SELECT 'duplicate metro_month keys', '0',
+    (SELECT COUNT(*) FROM (SELECT metro_id, month_end FROM core.metro_month GROUP BY metro_id, month_end HAVING COUNT(*) > 1) AS d);
+
+-- No month after the latest home-value month (decision 0004).
+INSERT #check SELECT 'latest month_end', '2026-09-30', (SELECT CONVERT(NVARCHAR(10), MAX(month_end), 23) FROM core.metro_month);
+
 /* ---------- Report ---------- */
 
 -- Show every check, failures first.
