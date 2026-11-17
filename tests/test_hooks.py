@@ -161,9 +161,31 @@ class StopTests(unittest.TestCase):
         self.repo.write(self.journal, GOOD_JOURNAL)
         self.assertIsNone(self.stop())
 
-    def test_stop_allows_when_stop_hook_active(self):
+    def test_stop_blocks_up_to_limit_then_warns(self):
         self.repo.write("sql/01_a.sql", "select 1")
+        self.assertEqual(self.stop()["decision"], "block")
+        self.assertEqual(self.stop(stop_hook_active=True)["decision"], "block")
+        self.assertEqual(self.stop(stop_hook_active=True)["decision"], "block")
+        final = self.stop(stop_hook_active=True)
+        self.assertNotIn("decision", final)
+        self.assertIn(self.journal, final["systemMessage"])
+
+    def test_stop_counter_resets_after_journal_completed(self):
+        self.repo.write("sql/01_a.sql", "select 1")
+        self.stop()
+        self.stop(stop_hook_active=True)
+        self.repo.write(self.journal, GOOD_JOURNAL)
         self.assertIsNone(self.stop(stop_hook_active=True))
+        self.repo.write(self.journal, GOOD_JOURNAL.replace("\ng\n", "\n_TBD_\n"))
+        for _ in range(3):
+            self.assertEqual(self.stop()["decision"], "block")
+
+    def test_stop_limit_applies_without_state_file(self):
+        other = "77777777-0000"
+        self.repo.write("sql/01_a.sql", "select 1")
+        for _ in range(3):
+            self.assertEqual(stop_journal.decide({"session_id": other}, self.repo.root)["decision"], "block")
+        self.assertIn("systemMessage", stop_journal.decide({"session_id": other}, self.repo.root))
 
     def test_stop_detects_committed_change(self):
         self.repo.write("sql/01_a.sql", "select 1")

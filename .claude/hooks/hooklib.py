@@ -31,6 +31,12 @@ def load_state(project: Path, session_id: str) -> dict:
         return {"date": datetime.date.today().isoformat(), "head": ""}
 
 
+def save_state(project: Path, session_id: str, state: dict) -> None:
+    path = state_path(project, session_id)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(state), encoding="utf-8")
+
+
 def git(project: Path, *args: str) -> str:
     """Output of a git command, or '' if git fails."""
     try:
