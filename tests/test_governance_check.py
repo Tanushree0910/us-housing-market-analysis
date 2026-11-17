@@ -306,6 +306,12 @@ class CheckerAccuracyTests(unittest.TestCase):
         self.repo.write("notes.txt")
         self.assertEqual(len(gc.check_layout(self.repo.root)), 1)
 
+    def test_main_fingerprint_matches_checker(self):
+        path = self.repo.write("data/a.csv", "1,2\r\n3,4\r\n")
+        with redirect_stdout(io.StringIO()) as out:
+            self.assertEqual(gc.main(["--fingerprint", str(path)]), 0)
+        self.assertEqual(out.getvalue().strip(), sha("1,2\n3,4\n"))
+
     def test_non_git_folder_still_walked(self):
         self.repo.write("notes.txt")
         self.assertEqual(len(gc.check_layout(self.repo.root)), 1)

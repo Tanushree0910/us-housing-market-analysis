@@ -88,6 +88,11 @@ def check_repo(root: Path) -> list[str]:
 
 def main(argv: list[str] | None = None) -> int:
     argv = sys.argv[1:] if argv is None else argv
+    if argv[:1] == ["--fingerprint"]:
+        # Print the SHA-256 to record in data/SOURCES.md, computed the same way the check does.
+        for name in argv[1:]:
+            print(_sha256(Path(name)))
+        return 0
     root = Path(argv[0]) if argv else Path(__file__).resolve().parent.parent
     problems = check_repo(root)
     for problem in problems:

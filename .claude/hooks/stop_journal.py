@@ -1,8 +1,9 @@
 """Stop hook: a session that changed the repo must leave a complete journal (Article 4).
 
-The agent is sent back to finish the journal up to MAX_JOURNAL_BLOCKS times.
-After that the session is allowed to end, so it can never get stuck, and the
-owner is shown a message that the journal is unfinished.
+Within one turn the agent is sent back to finish the journal up to
+MAX_JOURNAL_BLOCKS times. After that the turn is allowed to end, so it can never
+get stuck, and the owner is shown a message that the journal is unfinished.
+The next turn is checked again from scratch.
 """
 from pathlib import Path
 
@@ -44,7 +45,8 @@ def decide(payload: dict, project: Path) -> dict | None:
             hooklib.save_state(project, session_id, state)
         return None
 
-    blocks = state.get("journal_blocks", 0)
+    # Count only the retries within one turn: a new turn (not a stop-hook retry) starts again.
+    blocks = state.get("journal_blocks", 0) if payload.get("stop_hook_active") else 0
     if blocks >= MAX_JOURNAL_BLOCKS:
         return {"systemMessage": f"Session ended without a complete journal: {journal_rel}. "
                                  "Please ask the agent to finish it."}

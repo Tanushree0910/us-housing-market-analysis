@@ -12,7 +12,6 @@ REDIRECTS = {">", ">>", ">|", "&>", "&>>", ">&"}
 PREFIXES = {"sudo", "command", "nohup", "env", "time"}
 DELETE_OR_RENAME = {"rm", "mv", "truncate", "tee", "dd", "shred", "unlink"}
 COPY_ONTO_LAST = {"cp", "install", "rsync", "ln"}
-HEREDOC_START = re.compile(r"<<(-?)\s*(['\"]?)([A-Za-z_][A-Za-z0-9_]*)\2")
 
 RAW_DATA_REASON = ("Raw data files in data/ are read-only (CONSTITUTION.md Article 2). "
                    "Do not edit, rename or delete them; ask the owner if a raw file must change.")
@@ -56,29 +55,43 @@ def _check_edit(project: Path, tool_input: dict) -> dict | None:
     return None
 
 
-def _strip_heredoc_bodies(command: str) -> list[str]:
-    """Command lines with heredoc bodies removed (their text is data, not commands)."""
+def _tokens(line: str) -> list[str]:
+    """Shell words of one line. Like bash, '#' starts a comment only at the start of a word."""
+    try:
+        lexer = shlex.shlex(line, posix=True, punctuation_chars=True)
+        lexer.whitespace_split = True
+        lexer.commenters = ""
+        tokens = list(lexer)
+    except ValueError:
+        tokens = line.split()
+    for i, token in enumerate(tokens):
+        if token.startswith("#"):
+            return tokens[:i]
+    return tokens
+
+
+def _heredoc_end_word(tokens: list[str]) -> str | None:
+    """The word that ends a heredoc started on this line (only an unquoted '<<' counts)."""
+    for i, token in enumerate(tokens[:-1]):
+        if token == "<<":
+            word = tokens[i + 1].lstrip("-")
+            return word or None
+    return None
+
+
+def _command_lines(command: str) -> list[list[str]]:
+    """Tokens of each command line, with heredoc bodies left out (their text is data)."""
     lines = []
     ending = None
     for line in command.split("\n"):
         if ending is not None:
-            if line.lstrip("\t") == ending or line == ending:
+            if line.lstrip("\t") == ending:
                 ending = None
             continue
-        lines.append(line)
-        match = HEREDOC_START.search(line.replace("<<<", "   "))
-        if match:
-            ending = match.group(3)
+        tokens = _tokens(line)
+        lines.append(tokens)
+        ending = _heredoc_end_word(tokens)
     return lines
-
-
-def _tokens(line: str) -> list[str]:
-    try:
-        lexer = shlex.shlex(line, posix=True, punctuation_chars=True)
-        lexer.whitespace_split = True
-        return list(lexer)
-    except ValueError:
-        return line.split()
 
 
 def _segments(tokens: list[str]) -> list[list[str]]:
@@ -142,8 +155,8 @@ def _segment_writes_raw(project: Path, tokens: list[str]) -> bool:
 
 
 def _check_bash(project: Path, command: str) -> dict | None:
-    for line in _strip_heredoc_bodies(command):
-        for segment in _segments(_tokens(line)):
+    for tokens in _command_lines(command):
+        for segment in _segments(tokens):
             if _segment_writes_raw(project, segment):
                 return _answer("deny", RAW_DATA_REASON)
     return None

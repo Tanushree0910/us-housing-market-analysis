@@ -183,9 +183,19 @@ class StopTests(unittest.TestCase):
     def test_stop_limit_applies_without_state_file(self):
         other = "77777777-0000"
         self.repo.write("sql/01_a.sql", "select 1")
-        for _ in range(3):
-            self.assertEqual(stop_journal.decide({"session_id": other}, self.repo.root)["decision"], "block")
-        self.assertIn("systemMessage", stop_journal.decide({"session_id": other}, self.repo.root))
+        self.assertEqual(stop_journal.decide({"session_id": other}, self.repo.root)["decision"], "block")
+        retry = {"session_id": other, "stop_hook_active": True}
+        for _ in range(2):
+            self.assertEqual(stop_journal.decide(retry, self.repo.root)["decision"], "block")
+        self.assertIn("systemMessage", stop_journal.decide(retry, self.repo.root))
+
+    def test_stop_new_turn_blocks_again_after_limit(self):
+        self.repo.write("sql/01_a.sql", "select 1")
+        self.stop()
+        for _ in range(2):
+            self.stop(stop_hook_active=True)
+        self.assertIn("systemMessage", self.stop(stop_hook_active=True))
+        self.assertEqual(self.stop()["decision"], "block")
 
     def test_stop_detects_committed_change(self):
         self.repo.write("sql/01_a.sql", "select 1")
@@ -218,6 +228,16 @@ class GuardPrecisionTests(unittest.TestCase):
         self.assertIsNone(self.bash("python3 - <<EOF\nopen('x').write('> data/a.csv')\nEOF\necho done"))
         self.assertEqual(decision(self.bash("cat > data/a.csv <<'EOF'\nx\nEOF")), "deny")
         self.assertEqual(decision(self.bash("cat <<EOF > /tmp/x\nhi\nEOF\nrm data/a.csv")), "deny")
+
+    def test_guard_hash_inside_word_is_not_a_comment(self):
+        self.assertEqual(decision(self.bash("echo a#b > data/a.csv")), "deny")
+        self.assertEqual(decision(self.bash("curl https://x.com/p#frag -o data/a.csv")), "deny")
+        self.assertIsNone(self.bash("ls  # rm data/a.csv"))
+
+    def test_guard_quoted_heredoc_marker_hides_nothing(self):
+        self.assertEqual(decision(self.bash("echo '<<EOF'\nrm data/a.csv")), "deny")
+        self.assertEqual(decision(self.bash("git commit -m 'note <<EOF'\nrm data/a.csv")), "deny")
+        self.assertIsNone(self.bash("cat <<-EOF > /tmp/x\n\trm data/a.csv\n\tEOF"))
 
     def test_guard_denies_uppercase_csv(self):
         self.assertEqual(decision(self.bash("truncate -s0 data/X.CSV")), "deny")
