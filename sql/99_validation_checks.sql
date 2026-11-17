@@ -147,6 +147,36 @@ INSERT #check SELECT 'r inventory vs price 2026-09', '0.2968',
 INSERT #check SELECT 'r days vs price 2026-09', '0.0624',
     (SELECT CAST(r_days_vs_price AS NVARCHAR(30)) FROM rpt.v_supply_price_correlation WHERE month_end = '2026-09-30');
 
+/* ---------- Power BI model views (Task 9) ---------- */
+
+-- The fact view keeps exactly one row per core.metro_month row (240,674 counted in Python).
+INSERT #check SELECT 'fact rows', '240674', (SELECT COUNT(*) FROM rpt.fact_metro_month);
+INSERT #check SELECT 'fact duplicate keys', '0',
+    (SELECT COUNT(*) FROM (SELECT metro_id, month_end FROM rpt.fact_metro_month GROUP BY metro_id, month_end HAVING COUNT(*) > 1) AS d);
+
+-- Dimensions: every region, every month Jan 2000 - Sep 2026, and the large metros.
+-- Ranks 1-100 hold 99 regions: no file has rank 33, and ranks 74 (Dayton) and 86 (Poughkeepsie) exist only in the supply files.
+INSERT #check SELECT 'dim_metro rows', '928', (SELECT COUNT(*) FROM rpt.dim_metro);
+INSERT #check SELECT 'dim_month rows', '321', (SELECT COUNT(*) FROM rpt.dim_month);
+INSERT #check SELECT 'dim_month label 2026-09', 'Sep 2026', (SELECT month_label FROM rpt.dim_month WHERE month_end = '2026-09-30');
+INSERT #check SELECT 'large metros', '99', (SELECT COUNT(*) FROM rpt.dim_metro WHERE is_large_metro = 1);
+
+-- Every fact row must find its metro and month (no orphans for Power BI relationships).
+INSERT #check SELECT 'fact rows without dim match', '0',
+    -- (LEFT JOINs, not NOT EXISTS ... OR NOT EXISTS: that form re-ran the calendar view per row and took minutes.)
+    (SELECT COUNT(*) FROM rpt.fact_metro_month AS f
+     LEFT JOIN rpt.dim_metro AS dm ON dm.metro_id = f.metro_id
+     LEFT JOIN rpt.dim_month AS dt ON dt.month_end = f.month_end
+     WHERE dm.metro_id IS NULL OR dt.month_end IS NULL);
+
+-- Rent change for the U.S. (spec: +2.70%) and the measures carried over from the analysis views.
+INSERT #check SELECT 'US rent_yoy 2026-09', '2.70',
+    (SELECT CAST(CAST(ROUND(rent_yoy_pct, 2) AS DECIMAL(9, 2)) AS NVARCHAR(30)) FROM rpt.fact_metro_month WHERE metro_id = 102001 AND month_end = '2026-09-30');
+INSERT #check SELECT 'US fact row 2026-09', '366157.15|1.19|6.33|2.5063|2',
+    (SELECT CONCAT(home_value, N'|', CAST(ROUND(home_value_yoy_pct, 2) AS DECIMAL(9, 2)), N'|',
+                   CAST(ROUND(rent_to_price_pct, 2) AS DECIMAL(9, 2)), N'|', inventory_yoy_pct, N'|', days_to_pending_yoy_change)
+     FROM rpt.fact_metro_month WHERE metro_id = 102001 AND month_end = '2026-09-30');
+
 /* ---------- Report ---------- */
 
 -- Show every check, failures first.
