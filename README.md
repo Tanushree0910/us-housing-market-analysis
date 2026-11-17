@@ -19,6 +19,15 @@ SQL Server, SSMS, Power BI Desktop
 - `/sql` queries and views
 - `/powerbi` Power BI report (.pbix)
 - `/screenshots` dashboard images
+- `/docs` decision records, templates and plans
+- `/logs` session journals, bug logs and test logs
+- `/tools` the governance checker
+- `/tests` tests for the checker and hooks
+
+## Governance
+The rules for this repo are in [CONSTITUTION.md](CONSTITUTION.md). AI agents start from [CLAUDE.md](CLAUDE.md).
+Decisions are recorded in `docs/decisions/`, and every agent session, bug and test is logged in `logs/`.
+Run `python3 tools/governance_check.py` to check the repo. The same check runs on GitHub for every change.
 
 ## Findings
 _To be added._
