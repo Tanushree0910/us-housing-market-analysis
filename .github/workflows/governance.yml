@@ -1,8 +1,12 @@
 name: Governance checks
 
+# Runs on every push to any branch. Pull requests from this repo show
+# these results too, so a separate pull_request trigger would only duplicate them.
 on:
   push:
-  pull_request:
+
+permissions:
+  contents: read
 
 jobs:
   governance:

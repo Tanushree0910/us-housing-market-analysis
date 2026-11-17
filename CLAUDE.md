@@ -27,7 +27,7 @@ cd "$CLAUDE_PROJECT_DIR" && python3 tools/governance_check.py
 cd "$CLAUDE_PROJECT_DIR" && python3 -m unittest discover -s tests -t .
 ```
 
-The same checks run on GitHub for every push and pull request.
+The same checks run on GitHub for every push, and their results show on pull requests.
 
-## Adding a raw data file
-Put it in `data/` under its original name and add a row to `data/SOURCES.md` with its SHA-256 (`sha256sum data/<file>`).
+## Adding raw data
+Adding or replacing raw data is the owner's job. If new data is needed, ask the owner to put the file in `data/` under its original name. Then add its row to `data/SOURCES.md`, with the fingerprint from `sha256sum data/<file>`.

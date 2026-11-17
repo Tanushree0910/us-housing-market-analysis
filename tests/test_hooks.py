@@ -238,6 +238,14 @@ class GuardPrecisionTests(unittest.TestCase):
             repo.cleanup()
 
 
+class WorkflowTests(unittest.TestCase):
+    def test_workflow_runs_once_and_read_only(self):
+        text = (REPO / ".github/workflows/governance.yml").read_text()
+        self.assertIn("\n  push:\n", text)
+        self.assertNotIn("pull_request", text.split("on:", 1)[1].split("permissions:", 1)[0])
+        self.assertRegex(text, r"permissions:\s*\n\s+contents:\s*read")
+
+
 class ScriptTests(unittest.TestCase):
     def test_hook_script_survives_garbage_stdin(self):
         for name in ("session_start", "guard", "stop_journal"):
