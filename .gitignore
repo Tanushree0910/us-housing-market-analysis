@@ -1,3 +1,10 @@
 .claude/state/
 __pycache__/
 .superpowers/
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+.venv/
+~$*

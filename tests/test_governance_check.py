@@ -251,5 +251,65 @@ class ReviewFixTests(unittest.TestCase):
             self.assertEqual(gr.record_problems(folder, filename, "\n".join(out)), [], name)
 
 
+class CheckerAccuracyTests(unittest.TestCase):
+    def setUp(self):
+        self.repo = TempRepo()
+
+    def tearDown(self):
+        self.repo.cleanup()
+
+    def test_uppercase_csv_is_raw_data(self):
+        self.repo.write("data/A.CSV", "1,2")
+        self.repo.write("data/SOURCES.md", HEADER)
+        problems = gc.check_data_manifest(self.repo.root)
+        self.assertEqual(len(problems), 1)
+        self.assertIn("not listed", problems[0])
+        self.repo.write("data/SOURCES.md", HEADER + row("A.CSV", sha("1,2")))
+        self.assertEqual(gc.check_data_manifest(self.repo.root), [])
+        self.assertEqual(gc.check_layout(self.repo.root), [])
+
+    def test_bom_before_first_heading_accepted(self):
+        text = "﻿## Goal\ng\n## What changed\nc\n## Tests run\nt\n## Bugs found\nNone\n## Next steps\nNone\n"
+        self.assertEqual(gr.record_problems("logs/sessions", "2026-11-17-abcd1234.md", text), [])
+
+    def test_bom_in_sources_accepted(self):
+        self.repo.write("data/a.csv", "1,2")
+        self.repo.write("data/SOURCES.md", "﻿" + HEADER + row("a.csv", sha("1,2")))
+        self.assertEqual(gc.check_data_manifest(self.repo.root), [])
+
+    def test_sources_wrong_header_reported(self):
+        self.repo.write("data/a.csv", "1,2")
+        self.repo.write("data/SOURCES.md", "| file | source | url | added | SHA256 |\n|---|---|---|---|---|\n"
+                        + row("a.csv", sha("1,2")))
+        problems = gc.check_data_manifest(self.repo.root)
+        self.assertTrue(any("SHA-256" in p and "header" in p for p in problems), problems)
+
+    def test_sources_wrong_cell_count_reported(self):
+        self.repo.write("data/a.csv", "1,2")
+        bad = f"| `a.csv` | Zillow | https://x.com/a|b | 2026-10-19 | `{sha('1,2')}` |\n"
+        self.repo.write("data/SOURCES.md", HEADER + bad)
+        problems = gc.check_data_manifest(self.repo.root)
+        self.assertTrue(any("a.csv" in p and "5 columns" in p for p in problems), problems)
+
+    def test_sources_bad_hash_reported(self):
+        self.repo.write("data/a.csv", "1,2")
+        self.repo.write("data/SOURCES.md", HEADER + row("a.csv", "abc"))
+        problems = gc.check_data_manifest(self.repo.root)
+        self.assertTrue(any("64" in p for p in problems), problems)
+
+    def test_git_repo_ignores_gitignored_clutter(self):
+        import subprocess
+        subprocess.run(["git", "init", "-q"], cwd=self.repo.root, check=True)
+        self.repo.write(".gitignore", ".DS_Store\n")
+        self.repo.write(".DS_Store", "junk")
+        self.assertEqual(gc.check_layout(self.repo.root), [])
+        self.repo.write("notes.txt")
+        self.assertEqual(len(gc.check_layout(self.repo.root)), 1)
+
+    def test_non_git_folder_still_walked(self):
+        self.repo.write("notes.txt")
+        self.assertEqual(len(gc.check_layout(self.repo.root)), 1)
+
+
 if __name__ == "__main__":
     unittest.main()

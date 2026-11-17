@@ -43,14 +43,15 @@ def check_data_manifest(root: Path) -> list[str]:
     """Article 2: every raw file is listed in data/SOURCES.md and unchanged."""
     root = Path(root)
     csvs = sorted(rel.name for rel in rules.iter_files(root)
-                  if len(rel.parts) == 2 and rel.parts[0] == "data" and rel.suffix == ".csv")
+                  if len(rel.parts) == 2 and rel.parts[0] == "data" and rel.suffix.lower() == ".csv")
     manifest = root / "data" / "SOURCES.md"
     if not manifest.is_file():
         if csvs:
             return ["data/SOURCES.md: missing; every raw data file must be listed there (Article 2)"]
         return []
-    listed = rules.parse_sources(manifest.read_text(encoding="utf-8"))
-    problems = []
+    text = manifest.read_text(encoding="utf-8")
+    listed = rules.parse_sources(text)
+    problems = [f"data/SOURCES.md: {p}" for p in rules.sources_problems(text)]
     for name in csvs:
         if name not in listed:
             problems.append(f"data/{name}: not listed in data/SOURCES.md (Article 2)")
