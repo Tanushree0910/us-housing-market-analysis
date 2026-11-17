@@ -128,5 +128,93 @@ class DataManifestTests(unittest.TestCase):
         self.assertTrue(any("SOURCES.md" in p for p in gc.check_repo(self.repo.root)))
 
 
+VALID_RECORDS = {
+    "logs/sessions/2026-11-17-abcd1234.md":
+        {"Goal": "g", "What changed": "c", "Tests run": "t", "Bugs found": "None", "Next steps": "n"},
+    "logs/bugs/BUG-001-bad-join.md":
+        {"Status": "Fixed", "Found": "2026-11-17", "What happened": "w", "Cause": "c", "Fix": "f",
+         "Test log": "logs/tests/2026-11-17-join-check.md"},
+    "logs/tests/2026-11-17-join-check.md":
+        {"What was tested": "w", "How": "h", "Result": "PASS", "Bugs": "None"},
+    "docs/decisions/0001-adopt-governance.md":
+        {"Date": "2026-11-17", "Status": "Accepted", "Decision": "d", "Reason": "r", "Alternatives": "a"},
+}
+
+
+def record(sections, newline="\n", trailing=""):
+    parts = ["# Title"]
+    for heading, body in sections.items():
+        parts += ["", f"## {heading}{trailing}", body]
+    return newline.join(parts) + newline
+
+
+class RecordTests(unittest.TestCase):
+    def setUp(self):
+        self.repo = TempRepo()
+
+    def tearDown(self):
+        self.repo.cleanup()
+
+    def test_valid_record_of_each_type_passes(self):
+        for rel, sections in VALID_RECORDS.items():
+            self.repo.write(rel, record(sections))
+        self.repo.write("logs/bugs/.gitkeep", "")
+        self.assertEqual(gc.check_records(self.repo.root), [])
+
+    def test_missing_heading_flagged(self):
+        sections = dict(VALID_RECORDS["logs/tests/2026-11-17-join-check.md"])
+        del sections["How"]
+        self.repo.write("logs/tests/2026-11-17-join-check.md", record(sections))
+        problems = gc.check_records(self.repo.root)
+        self.assertEqual(len(problems), 1)
+        self.assertIn("How", problems[0])
+
+    def test_empty_section_flagged(self):
+        sections = dict(VALID_RECORDS["logs/tests/2026-11-17-join-check.md"], How="   ")
+        self.repo.write("logs/tests/2026-11-17-join-check.md", record(sections))
+        problems = gc.check_records(self.repo.root)
+        self.assertEqual(len(problems), 1)
+        self.assertIn("How", problems[0])
+
+    def test_tbd_flagged(self):
+        sections = dict(VALID_RECORDS["logs/sessions/2026-11-17-abcd1234.md"], Goal="_TBD_")
+        self.repo.write("logs/sessions/2026-11-17-abcd1234.md", record(sections))
+        problems = gc.check_records(self.repo.root)
+        self.assertEqual(len(problems), 1)
+        self.assertIn("_TBD_", problems[0])
+
+    def test_bad_record_name_flagged(self):
+        self.repo.write("logs/bugs/bad join.md", record(VALID_RECORDS["logs/bugs/BUG-001-bad-join.md"]))
+        problems = gc.check_records(self.repo.root)
+        self.assertEqual(len(problems), 1)
+        self.assertIn("logs/bugs/bad join.md", problems[0])
+
+    def test_bug_status_must_be_open_or_fixed(self):
+        sections = dict(VALID_RECORDS["logs/bugs/BUG-001-bad-join.md"], Status="Done")
+        self.repo.write("logs/bugs/BUG-001-bad-join.md", record(sections))
+        problems = gc.check_records(self.repo.root)
+        self.assertEqual(len(problems), 1)
+        self.assertIn("Status", problems[0])
+
+    def test_crlf_and_trailing_spaces_accepted(self):
+        for rel, sections in VALID_RECORDS.items():
+            self.repo.write(rel, record(sections, newline="\r\n", trailing="  "))
+        self.assertEqual(gc.check_records(self.repo.root), [])
+
+    def test_templates_folder_not_checked(self):
+        self.repo.write("docs/templates/bug-log.md", "## Status\n_TBD_\n")
+        self.assertEqual(gc.check_records(self.repo.root), [])
+
+    def test_stray_file_in_logs_flagged(self):
+        self.repo.write("logs/notes.md", "hi")
+        self.repo.write("logs/misc/a.md", "hi")
+        problems = gc.check_records(self.repo.root)
+        self.assertEqual(len(problems), 2)
+
+    def test_check_repo_includes_records(self):
+        self.repo.write("logs/notes.md", "hi")
+        self.assertTrue(any("logs/notes.md" in p for p in gc.check_repo(self.repo.root)))
+
+
 if __name__ == "__main__":
     unittest.main()

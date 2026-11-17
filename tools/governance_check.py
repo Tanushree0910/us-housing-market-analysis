@@ -64,9 +64,27 @@ def check_data_manifest(root: Path) -> list[str]:
     return problems
 
 
+def check_records(root: Path) -> list[str]:
+    """Article 4: session journals, bug logs, test logs and decisions."""
+    root = Path(root)
+    problems = []
+    for rel in rules.iter_files(root):
+        rel_str = rel.as_posix()
+        if rel.name == ".gitkeep":
+            continue
+        folder = rel.parent.as_posix()
+        if folder in rules.RECORD_TYPES:
+            text = (root / rel).read_text(encoding="utf-8", errors="replace")
+            problems += rules.record_problems(folder, rel.name, text)
+        elif rel.parts[0] == "logs" or rel_str.startswith("docs/decisions/"):
+            problems.append(f"{rel_str}: records belong directly in one of "
+                            f"{', '.join(sorted(rules.RECORD_TYPES))} (Article 4)")
+    return problems
+
+
 def check_repo(root: Path) -> list[str]:
     root = Path(root)
-    return check_layout(root) + check_sizes(root) + check_data_manifest(root)
+    return check_layout(root) + check_sizes(root) + check_data_manifest(root) + check_records(root)
 
 
 def main(argv: list[str] | None = None) -> int:

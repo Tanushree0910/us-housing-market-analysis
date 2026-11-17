@@ -78,3 +78,68 @@ def parse_sources(text: str) -> dict[str, str]:
         if len(cells) == len(SOURCES_HEADER):
             result[cells[0]] = cells[4].lower()
     return result
+
+
+# Article 4: record folders -> (file name pattern, required headings).
+RECORD_TYPES = {
+    "logs/sessions": (re.compile(r"^\d{4}-\d{2}-\d{2}-[0-9a-zA-Z]{8}\.md$"),
+                      ["Goal", "What changed", "Tests run", "Bugs found", "Next steps"]),
+    "logs/bugs": (re.compile(r"^BUG-\d{3}-[a-z0-9-]+\.md$"),
+                  ["Status", "Found", "What happened", "Cause", "Fix", "Test log"]),
+    "logs/tests": (re.compile(r"^\d{4}-\d{2}-\d{2}-[a-z0-9-]+\.md$"),
+                   ["What was tested", "How", "Result", "Bugs"]),
+    "docs/decisions": (re.compile(r"^\d{4}-[a-z0-9-]+\.md$"),
+                       ["Date", "Status", "Decision", "Reason", "Alternatives"]),
+}
+
+RECORD_NAME_HINTS = {
+    "logs/sessions": "YYYY-MM-DD-<first 8 characters of session id>.md",
+    "logs/bugs": "BUG-NNN-kebab-title.md",
+    "logs/tests": "YYYY-MM-DD-kebab-title.md",
+    "docs/decisions": "NNNN-kebab-title.md",
+}
+
+ALLOWED_VALUES = {
+    ("logs/bugs", "Status"): {"Open", "Fixed"},
+    ("logs/tests", "Result"): {"PASS", "FAIL"},
+    ("docs/decisions", "Status"): {"Proposed", "Accepted", "Replaced"},
+}
+
+
+def _sections(text: str) -> dict[str, list[str]]:
+    """Heading name -> non-empty body lines, for every '## ' heading."""
+    sections = {}
+    current = None
+    for line in text.replace("\r\n", "\n").split("\n"):
+        stripped = line.rstrip()
+        if stripped.startswith("## "):
+            current = stripped[3:].strip()
+            sections.setdefault(current, [])
+        elif stripped.startswith("# "):
+            current = None
+        elif current is not None and stripped.strip():
+            sections[current].append(stripped.strip())
+    return sections
+
+
+def record_problems(folder: str, filename: str, text: str) -> list[str]:
+    """Everything wrong with one record file, as plain-English messages."""
+    pattern, headings = RECORD_TYPES[folder]
+    where = f"{folder}/{filename}"
+    if not pattern.match(filename):
+        return [f"{where}: wrong file name, expected {RECORD_NAME_HINTS[folder]} (Article 4)"]
+    problems = []
+    if PLACEHOLDER in text:
+        problems.append(f"{where}: still contains the placeholder {PLACEHOLDER}; fill in every section (Article 4)")
+    sections = _sections(text)
+    for heading in headings:
+        if heading not in sections:
+            problems.append(f"{where}: missing section '## {heading}' (Article 4)")
+        elif not sections[heading]:
+            problems.append(f"{where}: section '## {heading}' is empty (Article 4)")
+        elif (folder, heading) in ALLOWED_VALUES:
+            value = sections[heading][0].strip("*` ")
+            allowed = ALLOWED_VALUES[(folder, heading)]
+            if value not in allowed:
+                problems.append(f"{where}: '## {heading}' must be one of {', '.join(sorted(allowed))}, found '{value}' (Article 4)")
+    return problems
