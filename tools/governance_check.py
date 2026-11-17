@@ -1,4 +1,5 @@
 """Check the repo against the constitution. Run: python3 tools/governance_check.py"""
+import hashlib
 import sys
 from pathlib import Path
 
@@ -32,9 +33,40 @@ def check_sizes(root: Path) -> list[str]:
     return problems
 
 
+def _sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with open(path, "rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def check_data_manifest(root: Path) -> list[str]:
+    """Article 2: every raw file is listed in data/SOURCES.md and unchanged."""
+    root = Path(root)
+    csvs = sorted(rel.name for rel in rules.iter_files(root)
+                  if len(rel.parts) == 2 and rel.parts[0] == "data" and rel.suffix == ".csv")
+    manifest = root / "data" / "SOURCES.md"
+    if not manifest.is_file():
+        if csvs:
+            return ["data/SOURCES.md: missing; every raw data file must be listed there (Article 2)"]
+        return []
+    listed = rules.parse_sources(manifest.read_text(encoding="utf-8"))
+    problems = []
+    for name in csvs:
+        if name not in listed:
+            problems.append(f"data/{name}: not listed in data/SOURCES.md (Article 2)")
+        elif _sha256(root / "data" / name) != listed[name]:
+            problems.append(f"data/{name}: file has changed since it was recorded in data/SOURCES.md; "
+                            "raw data must not be edited (Article 2)")
+    for name in sorted(set(listed) - set(csvs)):
+        problems.append(f"data/SOURCES.md: lists '{name}' but data/{name} does not exist (Article 2)")
+    return problems
+
+
 def check_repo(root: Path) -> list[str]:
     root = Path(root)
-    return check_layout(root) + check_sizes(root)
+    return check_layout(root) + check_sizes(root) + check_data_manifest(root)
 
 
 def main(argv: list[str] | None = None) -> int:

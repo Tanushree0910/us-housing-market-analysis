@@ -51,3 +51,30 @@ def iter_files(root: Path) -> list[Path]:
         if path.is_file():
             found.append(rel)
     return sorted(found)
+
+
+# Article 2: the data manifest table header in data/SOURCES.md.
+SOURCES_HEADER = ["File", "Source", "URL", "Added", "SHA-256"]
+
+
+def _cells(line: str) -> list[str]:
+    return [c.strip().strip("`").strip() for c in line.strip().strip("|").split("|")]
+
+
+def parse_sources(text: str) -> dict[str, str]:
+    """Map raw file name -> SHA-256 from the manifest table."""
+    result = {}
+    in_table = False
+    for line in text.replace("\r\n", "\n").split("\n"):
+        if not line.strip().startswith("|"):
+            in_table = False
+            continue
+        cells = _cells(line)
+        if cells == SOURCES_HEADER:
+            in_table = True
+            continue
+        if not in_table or all(set(c) <= set("-: ") for c in cells):
+            continue
+        if len(cells) == len(SOURCES_HEADER):
+            result[cells[0]] = cells[4].lower()
+    return result

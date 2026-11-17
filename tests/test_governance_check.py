@@ -70,5 +70,63 @@ class LayoutTests(unittest.TestCase):
         self.assertIn("FAILED: 1 problem(s)", out.getvalue())
 
 
+HEADER = "| File | Source | URL | Added | SHA-256 |\n|---|---|---|---|---|\n"
+
+
+def sha(text):
+    import hashlib
+    return hashlib.sha256(text.encode()).hexdigest()
+
+
+def row(name, digest):
+    return f"| `{name}` | Zillow | https://example.com | 2026-10-19 | `{digest}` |\n"
+
+
+class DataManifestTests(unittest.TestCase):
+    def setUp(self):
+        self.repo = TempRepo()
+
+    def tearDown(self):
+        self.repo.cleanup()
+
+    def test_csv_without_row_flagged(self):
+        self.repo.write("data/a.csv", "1,2")
+        self.repo.write("data/SOURCES.md", "Intro\n\n" + HEADER)
+        problems = gc.check_data_manifest(self.repo.root)
+        self.assertEqual(len(problems), 1)
+        self.assertIn("data/a.csv", problems[0])
+
+    def test_row_without_file_flagged(self):
+        self.repo.write("data/SOURCES.md", HEADER + row("gone.csv", sha("x")))
+        problems = gc.check_data_manifest(self.repo.root)
+        self.assertEqual(len(problems), 1)
+        self.assertIn("gone.csv", problems[0])
+
+    def test_hash_mismatch_flagged(self):
+        self.repo.write("data/a.csv", "edited")
+        self.repo.write("data/SOURCES.md", HEADER + row("a.csv", sha("original")))
+        problems = gc.check_data_manifest(self.repo.root)
+        self.assertEqual(len(problems), 1)
+        self.assertIn("changed", problems[0])
+        self.assertIn("data/a.csv", problems[0])
+
+    def test_matching_manifest_passes(self):
+        self.repo.write("data/a.csv", "1,2")
+        self.repo.write("data/SOURCES.md", "Intro\n\n" + HEADER + row("a.csv", sha("1,2")))
+        self.assertEqual(gc.check_data_manifest(self.repo.root), [])
+
+    def test_missing_manifest_flagged_only_when_csv_present(self):
+        self.repo.write("data/.gitkeep", "")
+        self.assertEqual(gc.check_data_manifest(self.repo.root), [])
+        self.repo.write("data/a.csv", "1,2")
+        problems = gc.check_data_manifest(self.repo.root)
+        self.assertEqual(len(problems), 1)
+        self.assertIn("SOURCES.md", problems[0])
+
+    def test_check_repo_includes_manifest(self):
+        self.repo.write("data/a.csv", "1,2")
+        self.assertTrue(any("SOURCES.md" in p for p in gc.check_repo(self.repo.root)))
+
+
 if __name__ == "__main__":
     unittest.main()
