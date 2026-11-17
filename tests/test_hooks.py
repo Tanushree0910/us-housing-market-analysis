@@ -177,6 +177,45 @@ class StopTests(unittest.TestCase):
         self.assertEqual(stop_journal.decide({"session_id": other}, self.repo.root)["decision"], "block")
 
 
+class GuardPrecisionTests(unittest.TestCase):
+    def bash(self, command):
+        return guard.decide({"tool_name": "Bash", "tool_input": {"command": command}}, Path("/proj"))
+
+    def test_guard_allows_redirect_to_other_data_paths(self):
+        for command in ("grep x f > results/data/out.csv",
+                        "echo 1 > exports/metadata/x.csv",
+                        "echo 1 > data/derived/x.csv"):
+            self.assertIsNone(self.bash(command), command)
+
+    def test_guard_allows_quoted_mentions(self):
+        for command in ("echo 'a > data/x.csv'", 'git commit -m "rm data/a.csv"'):
+            self.assertIsNone(self.bash(command), command)
+
+    def test_guard_allows_heredoc_body_mentions(self):
+        self.assertIsNone(self.bash("cat > /tmp/s.sh <<'EOF'\nrm data/a.csv\nEOF"))
+        self.assertIsNone(self.bash("python3 - <<EOF\nopen('x').write('> data/a.csv')\nEOF\necho done"))
+        self.assertEqual(decision(self.bash("cat > data/a.csv <<'EOF'\nx\nEOF")), "deny")
+        self.assertEqual(decision(self.bash("cat <<EOF > /tmp/x\nhi\nEOF\nrm data/a.csv")), "deny")
+
+    def test_guard_denies_uppercase_csv(self):
+        self.assertEqual(decision(self.bash("truncate -s0 data/X.CSV")), "deny")
+        self.assertEqual(decision(guard.decide(
+            {"tool_name": "Edit", "tool_input": {"file_path": "data/X.CSV"}}, Path("/proj"))), "deny")
+
+    def test_guard_resolves_symlinked_project(self):
+        repo = TempRepo()
+        try:
+            real = repo.root / "real"
+            (real / "data").mkdir(parents=True)
+            link = repo.root / "link"
+            link.symlink_to(real)
+            result = guard.decide({"tool_name": "Edit",
+                                   "tool_input": {"file_path": str(real / "data" / "a.csv")}}, link)
+            self.assertEqual(decision(result), "deny")
+        finally:
+            repo.cleanup()
+
+
 class ScriptTests(unittest.TestCase):
     def test_hook_script_survives_garbage_stdin(self):
         for name in ("session_start", "guard", "stop_journal"):

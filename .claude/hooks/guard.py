@@ -7,9 +7,12 @@ from pathlib import Path
 import hooklib
 
 EDIT_TOOLS = {"Edit", "Write", "MultiEdit", "NotebookEdit"}
-CSV_TOKEN = re.compile(r"(?:^|/)data/[^/\s]+\.csv$")
-REDIRECT_TO_CSV = re.compile(r">>?\s*['\"]?\S*(?:^|/|\s|['\"])?data/[^/\s'\"]+\.csv")
-SEGMENT_SPLIT = re.compile(r"&&|\|\||[;|\n]")
+SEPARATORS = {";", "&&", "||", "|", "&", "(", ")", ";;", "|&"}
+REDIRECTS = {">", ">>", ">|", "&>", "&>>", ">&"}
+PREFIXES = {"sudo", "command", "nohup", "env", "time"}
+DELETE_OR_RENAME = {"rm", "mv", "truncate", "tee", "dd", "shred", "unlink"}
+COPY_ONTO_LAST = {"cp", "install", "rsync", "ln"}
+HEREDOC_START = re.compile(r"<<(-?)\s*(['\"]?)([A-Za-z_][A-Za-z0-9_]*)\2")
 
 RAW_DATA_REASON = ("Raw data files in data/ are read-only (CONSTITUTION.md Article 2). "
                    "Do not edit, rename or delete them; ask the owner if a raw file must change.")
@@ -23,68 +26,126 @@ def _answer(kind: str, reason: str) -> dict:
                                    "permissionDecisionReason": reason}}
 
 
-def _relative(project: Path, file_path: str) -> str | None:
-    """file_path as a repo-relative POSIX path, or None if outside the repo."""
-    path = Path(file_path)
+def _relative(project: Path, path_text: str) -> Path | None:
+    """path_text resolved against the project, as a project-relative path, or None if outside."""
+    if not path_text:
+        return None
+    path = Path(path_text)
     if not path.is_absolute():
         path = Path(project) / path
-    normal = Path(os.path.normpath(path))
     try:
-        return normal.relative_to(os.path.normpath(project)).as_posix()
-    except ValueError:
+        return path.resolve(strict=False).relative_to(Path(project).resolve(strict=False))
+    except (ValueError, OSError):
         return None
+
+
+def is_raw_data(project: Path, path_text: str) -> bool:
+    """True when path_text names a raw file: exactly data/<name>.csv (any letter case)."""
+    rel = _relative(project, path_text)
+    return (rel is not None and len(rel.parts) == 2 and rel.parts[0] == "data"
+            and rel.parts[1].lower().endswith(".csv"))
 
 
 def _check_edit(project: Path, tool_input: dict) -> dict | None:
-    rel = _relative(project, tool_input.get("file_path") or tool_input.get("notebook_path") or "")
-    if rel is None:
-        return None
-    parts = rel.split("/")
-    if len(parts) == 2 and parts[0] == "data" and parts[1].lower().endswith(".csv"):
+    path_text = tool_input.get("file_path") or tool_input.get("notebook_path") or ""
+    if is_raw_data(project, path_text):
         return _answer("deny", RAW_DATA_REASON)
-    if rel == "CONSTITUTION.md":
+    rel = _relative(project, path_text)
+    if rel is not None and rel.as_posix() == "CONSTITUTION.md":
         return _answer("ask", CONSTITUTION_REASON)
     return None
 
 
-def _segment_writes_csv(segment: str) -> bool:
-    if REDIRECT_TO_CSV.search(segment):
-        return True
+def _strip_heredoc_bodies(command: str) -> list[str]:
+    """Command lines with heredoc bodies removed (their text is data, not commands)."""
+    lines = []
+    ending = None
+    for line in command.split("\n"):
+        if ending is not None:
+            if line.lstrip("\t") == ending or line == ending:
+                ending = None
+            continue
+        lines.append(line)
+        match = HEREDOC_START.search(line.replace("<<<", "   "))
+        if match:
+            ending = match.group(3)
+    return lines
+
+
+def _tokens(line: str) -> list[str]:
     try:
-        tokens = shlex.split(segment)
+        lexer = shlex.shlex(line, posix=True, punctuation_chars=True)
+        lexer.whitespace_split = True
+        return list(lexer)
     except ValueError:
-        tokens = segment.split()
-    while tokens and tokens[0] in {"sudo", "command", "nohup"}:
-        tokens = tokens[1:]
-    if not tokens:
+        return line.split()
+
+
+def _segments(tokens: list[str]) -> list[list[str]]:
+    segments, current = [], []
+    for token in tokens:
+        if token in SEPARATORS:
+            segments.append(current)
+            current = []
+        else:
+            current.append(token)
+    segments.append(current)
+    return [s for s in segments if s]
+
+
+def _segment_writes_raw(project: Path, tokens: list[str]) -> bool:
+    words = []
+    skip_next = False
+    for i, token in enumerate(tokens):
+        if skip_next:
+            skip_next = False
+            continue
+        if token in REDIRECTS:
+            target = tokens[i + 1] if i + 1 < len(tokens) else ""
+            if is_raw_data(project, target):
+                return True
+            skip_next = True
+            continue
+        if token in {"<", "<<", "<<-", "<<<"}:
+            skip_next = True
+            continue
+        words.append(token)
+    while words and (words[0] in PREFIXES or re.match(r"^[A-Za-z_]+=", words[0])):
+        words = words[1:]
+    if not words:
         return False
-    command = os.path.basename(tokens[0])
-    for i, token in enumerate(tokens[1:], start=1):
-        option, _, value = token.partition("=")
-        if value and option in {"of", "--output", "--output-document"} and CSV_TOKEN.search(value):
+    command, args = os.path.basename(words[0]), words[1:]
+
+    def raw(text: str) -> bool:
+        return is_raw_data(project, text)
+
+    for i, arg in enumerate(args):
+        option, _, value = arg.partition("=")
+        if value and option in {"of", "--output", "--output-document"} and raw(value):
             return True
-        nxt = tokens[i + 1] if i + 1 < len(tokens) else ""
-        if CSV_TOKEN.search(nxt) and (
-                (command == "curl" and token in {"-o", "--output"}) or
-                (command == "wget" and token in {"-O", "--output-document"})):
+        nxt = args[i + 1] if i + 1 < len(args) else ""
+        if raw(nxt) and ((command == "curl" and arg in {"-o", "--output"})
+                         or (command == "wget" and arg in {"-O", "--output-document"})):
             return True
-    csv_args = [t for t in tokens[1:] if CSV_TOKEN.search(t)]
-    if not csv_args:
+    raw_args = [a for a in args if raw(a)]
+    if not raw_args:
         return False
-    if command in {"rm", "mv", "truncate", "tee", "dd", "shred"}:
+    if command in DELETE_OR_RENAME:
         return True
-    if command == "git" and len(tokens) > 1 and tokens[1] in {"rm", "mv"}:
+    if command == "git" and args and args[0] in {"rm", "mv"}:
         return True
-    if command == "sed" and any(t.startswith("--in-place") or re.match(r"^-[a-zA-Z]*i", t) for t in tokens[1:]):
+    if command == "sed" and any(a.startswith("--in-place") or re.match(r"^-[a-zA-Z]*i", a) for a in args):
         return True
-    if command in {"cp", "install", "rsync"} and CSV_TOKEN.search(tokens[-1]):
+    if command in COPY_ONTO_LAST and raw(args[-1]):
         return True
     return False
 
 
-def _check_bash(command: str) -> dict | None:
-    if any(_segment_writes_csv(seg) for seg in SEGMENT_SPLIT.split(command)):
-        return _answer("deny", RAW_DATA_REASON)
+def _check_bash(project: Path, command: str) -> dict | None:
+    for line in _strip_heredoc_bodies(command):
+        for segment in _segments(_tokens(line)):
+            if _segment_writes_raw(project, segment):
+                return _answer("deny", RAW_DATA_REASON)
     return None
 
 
@@ -94,7 +155,7 @@ def decide(payload: dict, project: Path) -> dict | None:
     if tool in EDIT_TOOLS:
         return _check_edit(project, tool_input)
     if tool == "Bash":
-        return _check_bash(tool_input.get("command", ""))
+        return _check_bash(project, tool_input.get("command", ""))
     return None
 
 
