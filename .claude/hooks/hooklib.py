@@ -74,6 +74,26 @@ def _main_checkout(project_str: str) -> Path:
     return Path(common).resolve(strict=False).parent
 
 
+def worktrees(main: Path) -> dict[str, dict]:
+    """Every worktree except the main folder: path -> {"branch", "head", "status"}."""
+    found = {}
+    current = {}
+    for line in git(main, "worktree", "list", "--porcelain").splitlines() + [""]:
+        if line.startswith("worktree "):
+            current = {"path": line[len("worktree "):]}
+        elif line.startswith("HEAD "):
+            current["head"] = line[len("HEAD "):]
+        elif line.startswith("branch "):
+            current["branch"] = line[len("branch refs/heads/"):]
+        elif not line and current.get("path"):
+            path = Path(current["path"]).resolve(strict=False)
+            if path != Path(main).resolve(strict=False):
+                found[str(path)] = {"branch": current.get("branch", ""), "head": current.get("head", ""),
+                                    "status": git_status(path)}
+            current = {}
+    return found
+
+
 def repo_relative(project: Path, path: Path) -> Path | None:
     """path relative to the repo, as if it were in the main folder.
 

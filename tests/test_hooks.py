@@ -21,7 +21,7 @@ def load(name):
 
 session_start = load("session_start")
 guard = load("guard")
-stop_journal = load("stop_journal")
+stop_journal = load("session_end")
 
 SID = "abcd1234-ffff-0000-1111-222233334444"
 GOOD_JOURNAL = ("# Session journal\n\n## Goal\ng\n\n## What changed\nc\n\n## Tests run\nt\n\n"
@@ -159,6 +159,7 @@ class StopTests(unittest.TestCase):
     def test_stop_allows_with_complete_journal(self):
         self.repo.write("sql/01_a.sql", "select 1")
         self.repo.write(self.journal, GOOD_JOURNAL)
+        self.repo.commit()
         self.assertIsNone(self.stop())
 
     def test_stop_blocks_up_to_limit_then_warns(self):
@@ -175,6 +176,7 @@ class StopTests(unittest.TestCase):
         self.stop()
         self.stop(stop_hook_active=True)
         self.repo.write(self.journal, GOOD_JOURNAL)
+        self.repo.commit()
         self.assertIsNone(self.stop(stop_hook_active=True))
         self.repo.write(self.journal, GOOD_JOURNAL.replace("\ng\n", "\n_TBD_\n"))
         for _ in range(3):
@@ -321,7 +323,7 @@ class WorkflowTests(unittest.TestCase):
 
 class ScriptTests(unittest.TestCase):
     def test_hook_script_survives_garbage_stdin(self):
-        for name in ("session_start", "guard", "stop_journal"):
+        for name in ("session_start", "guard", "git_guard", "agent_guard", "session_end"):
             run = subprocess.run([sys.executable, str(HOOKS / f"{name}.py")], input="not json",
                                  capture_output=True, text=True)
             self.assertEqual(run.returncode, 0, name)
