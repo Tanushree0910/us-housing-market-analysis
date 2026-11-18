@@ -17,6 +17,28 @@
           {
             "type": "command",
             "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard.py\" 2>/dev/null || python \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard.py\""
+          },
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/git_guard.py\" 2>/dev/null || python \"$CLAUDE_PROJECT_DIR/.claude/hooks/git_guard.py\""
+          }
+        ]
+      },
+      {
+        "matcher": "mcp__github__.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/git_guard.py\" 2>/dev/null || python \"$CLAUDE_PROJECT_DIR/.claude/hooks/git_guard.py\""
+          }
+        ]
+      },
+      {
+        "matcher": "Agent|Task|mcp__claude-code-remote__create_session",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/agent_guard.py\" 2>/dev/null || python \"$CLAUDE_PROJECT_DIR/.claude/hooks/agent_guard.py\""
           }
         ]
       }
@@ -26,7 +48,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/stop_journal.py\" 2>/dev/null || python \"$CLAUDE_PROJECT_DIR/.claude/hooks/stop_journal.py\""
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/session_end.py\" 2>/dev/null || python \"$CLAUDE_PROJECT_DIR/.claude/hooks/session_end.py\""
           }
         ]
       }

@@ -1,5 +1,6 @@
 """Shared helpers for this repo's Claude Code hooks (see CONSTITUTION.md Article 4)."""
 import datetime
+import functools
 import json
 import os
 import subprocess
@@ -53,6 +54,84 @@ def git_status(project: Path) -> list[str]:
 
 def _lines(text: str) -> list[str]:
     return [line for line in text.splitlines() if line.strip()]
+
+
+WORKTREES_FOLDER = ".worktrees"
+MAIN_BRANCHES = {"main", "master"}
+
+
+def main_checkout(project: Path) -> Path:
+    """The repo's main folder, even when called from inside one of its worktrees."""
+    return _main_checkout(str(Path(project).resolve(strict=False)))
+
+
+@functools.lru_cache(maxsize=32)
+def _main_checkout(project_str: str) -> Path:
+    project = Path(project_str)
+    common = git(project, "rev-parse", "--path-format=absolute", "--git-common-dir").strip()
+    if not common:
+        return project
+    return Path(common).resolve(strict=False).parent
+
+
+def worktrees(main: Path) -> dict[str, dict]:
+    """Every worktree except the main folder: path -> {"branch", "head", "status"}."""
+    found = {}
+    current = {}
+    for line in git(main, "worktree", "list", "--porcelain").splitlines() + [""]:
+        if line.startswith("worktree "):
+            current = {"path": line[len("worktree "):]}
+        elif line.startswith("HEAD "):
+            current["head"] = line[len("HEAD "):]
+        elif line.startswith("branch "):
+            current["branch"] = line[len("branch refs/heads/"):]
+        elif not line and current.get("path"):
+            path = Path(current["path"]).resolve(strict=False)
+            if path != Path(main).resolve(strict=False):
+                found[str(path)] = {"branch": current.get("branch", ""), "head": current.get("head", ""),
+                                    "status": git_status(path)}
+            current = {}
+    return found
+
+
+def worktree_of(project: Path, path: Path) -> Path | None:
+    """The .worktrees/<name> folder that contains path, or None."""
+    main = main_checkout(project)
+    try:
+        rel = Path(path).resolve(strict=False).relative_to(main)
+    except ValueError:
+        return None
+    if len(rel.parts) >= 2 and rel.parts[0] == WORKTREES_FOLDER:
+        return main / rel.parts[0] / rel.parts[1]
+    return None
+
+
+def mark_touched(project: Path, session_id: str, folders: set[Path]) -> None:
+    """Remember which worktrees this session worked in, so the end check judges only those."""
+    if not session_id or not folders:
+        return
+    state = load_state(project, session_id)
+    touched = set(state.get("touched", []))
+    new = {str(Path(f).resolve(strict=False)) for f in folders} - touched
+    if new:
+        state["touched"] = sorted(touched | new)
+        save_state(project, session_id, state)
+
+
+def repo_relative(project: Path, path: Path) -> Path | None:
+    """path relative to the repo, as if it were in the main folder.
+
+    A file in .worktrees/<name>/ is treated like the same file in the main folder,
+    so rules about data/ or CONSTITUTION.md apply inside worktrees too.
+    Returns None for paths outside the repo.
+    """
+    try:
+        rel = Path(path).resolve(strict=False).relative_to(main_checkout(project))
+    except ValueError:
+        return None
+    if len(rel.parts) >= 2 and rel.parts[0] == WORKTREES_FOLDER:
+        return Path(*rel.parts[2:])
+    return rel
 
 
 def run(handler) -> None:

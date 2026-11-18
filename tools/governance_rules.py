@@ -34,7 +34,7 @@ MAX_FILE_BYTES = 50 * 1024 * 1024
 PLACEHOLDER = "_TBD_"
 
 # Never walked: git internals, hook scratch state, local tool scratch.
-SKIP_DIRS = {".git", ".claude/state", ".superpowers"}
+SKIP_DIRS = {".git", ".claude/state", ".superpowers", ".worktrees"}
 SKIP_DIR_NAMES = {"__pycache__"}
 
 
