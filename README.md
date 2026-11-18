@@ -28,6 +28,7 @@ SQL Server, SSMS, Power BI Desktop
 The rules for this repo are in [CONSTITUTION.md](CONSTITUTION.md). AI agents start from [CLAUDE.md](CLAUDE.md).
 Decisions are recorded in `docs/decisions/`, and every agent session, bug and test is logged in `logs/`.
 Run `python3 tools/governance_check.py` to check the repo. The same check runs on GitHub for every change.
+`main` is protected on GitHub by the "Protect main" ruleset (setup steps in [docs/github-setup.md](docs/github-setup.md)). AI agents work only in worktrees under `.worktrees/`, never on `main`.
 
 ## Findings
 _To be added._
