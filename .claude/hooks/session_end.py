@@ -1,6 +1,7 @@
 """Stop hook: before a session ends, its work must be tidy (Articles 4 and 5).
 
-For the session's own folder and every worktree that changed during the session:
+For the session's own folder (when it is a worktree) and every worktree this
+session worked in (recorded by git_guard) that changed during the session:
 - nothing is left uncommitted,
 - every commit has been pushed (when the repo has a remote),
 - the governance check passes,
@@ -32,11 +33,17 @@ def _session_folder_changed(project: Path, state: dict) -> bool:
     return bool(state.get("head")) and head != state["head"]
 
 
-def _changed_worktrees(main: Path, project: Path, state: dict) -> dict[str, dict]:
+def _changed_worktrees(trees: dict[str, dict], project: Path, state: dict) -> dict[str, dict]:
+    """Worktrees this session worked in that changed since it started.
+
+    Worktrees the session never touched belong to other sessions or the owner,
+    so they are left alone.
+    """
     before = state.get("worktrees", {})
+    touched = set(state.get("touched", []))
     changed = {}
-    for path, info in hooklib.worktrees(main).items():
-        if Path(path) == Path(project).resolve(strict=False):
+    for path, info in trees.items():
+        if Path(path) == Path(project).resolve(strict=False) or path not in touched:
             continue
         old = before.get(path)
         if old is None or old.get("head") != info["head"] or old.get("status") != info["status"]:
@@ -51,16 +58,12 @@ def _unpushed(place: Path) -> int:
     return int(count) if count.isdigit() else 0
 
 
-def _place_problems(place: Path, label: str, new_lines: list[str], is_main: bool) -> list[str]:
+def _place_problems(place: Path, label: str, new_lines: list[str]) -> list[str]:
     problems = []
     if new_lines:
         files = ", ".join(line[3:].strip() for line in new_lines[:5]) + (" …" if len(new_lines) > 5 else "")
-        if is_main:
-            problems.append(f"{label} has uncommitted changes ({files}). Agents don't work there "
-                            "(Article 5): move the work into a worktree and commit it there.")
-        else:
-            problems.append(f"{label} has uncommitted changes ({files}). Commit them: "
-                            f"cd {place} && git add -A && git commit -m \"<what changed>\"")
+        problems.append(f"{label} has uncommitted changes ({files}). Commit them: "
+                        f"cd {place} && git add -A && git commit -m \"<what changed>\"")
     count = _unpushed(place)
     if count:
         branch = hooklib.git(place, "branch", "--show-current").strip()
@@ -91,18 +94,20 @@ def decide(payload: dict, project: Path) -> dict | None:
     main = hooklib.main_checkout(project)
     journal_rel = hooklib.journal_path(Path("."), state["date"], session_id).as_posix()
 
+    trees = hooklib.worktrees(main)
     problems = []
     changed_places = []
-    if _session_folder_changed(project, state):
+    # The main folder is never an agent's workplace (Article 5): changes there are the
+    # owner's, so they are not this session's to commit.
+    if project != main and _session_folder_changed(project, state):
         changed_places.append(project)
-        label = "The main project folder" if project == main else str(project)
         new_lines = _own_lines(hooklib.git_status(project), set(state.get("status", [])))
-        problems += _place_problems(project, label, new_lines, is_main=project == main)
-    for path, info in _changed_worktrees(main, project, state).items():
+        problems += _place_problems(project, str(project), new_lines)
+    for path, info in _changed_worktrees(trees, project, state).items():
         changed_places.append(Path(path))
-        problems += _place_problems(Path(path), path, _own_lines(info["status"]), is_main=False)
+        problems += _place_problems(Path(path), path, _own_lines(info["status"]))
     if changed_places:
-        problems += _journal_problems([project, *[Path(p) for p in hooklib.worktrees(main)]], journal_rel)
+        problems += _journal_problems([project, *[Path(p) for p in trees]], journal_rel)
 
     if not problems:
         if state.get("journal_blocks"):

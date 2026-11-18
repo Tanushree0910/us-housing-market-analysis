@@ -34,11 +34,17 @@ def git(root, *args):
 
 
 class GitRepo(TempRepo):
+    """A worktree of a throwaway repo: the folder an agent session normally works in."""
+
     def __init__(self):
         super().__init__()
-        git(self.root, "init", "-q")
+        self.main = self.root
+        git(self.main, "init", "-q", "-b", "main")
         self.write("README.md", "hi")
+        self.write(".gitignore", ".worktrees/\n.claude/state/\n")
         self.commit()
+        git(self.main, "worktree", "add", "-q", ".worktrees/w", "-b", "feature")
+        self.root = self.main / ".worktrees" / "w"
 
     def commit(self):
         git(self.root, "add", "-A")
@@ -235,6 +241,22 @@ class GuardWorktreeTests(unittest.TestCase):
 
     def test_guard_allows_worktree_sql(self):
         self.assertIsNone(self.edit(self.wt / "sql" / "01_a.sql"))
+
+
+class GuardFolderTests(unittest.TestCase):
+    def test_guard_judges_relative_paths_from_the_command_folder(self):
+        from tests.helpers import make_repo_with_worktree
+        repo, wt = make_repo_with_worktree()
+        try:
+            (wt / "data").mkdir()
+            inside = guard.decide({"tool_name": "Bash", "tool_input": {"command": "rm housing.csv"},
+                                   "cwd": str(wt / "data")}, repo.root)
+            self.assertEqual(decision(inside), "deny")
+            elsewhere = guard.decide({"tool_name": "Bash", "tool_input": {"command": "rm data/housing.csv"},
+                                      "cwd": "/tmp"}, repo.root)
+            self.assertIsNone(elsewhere)
+        finally:
+            repo.cleanup()
 
 
 class GuardPrecisionTests(unittest.TestCase):

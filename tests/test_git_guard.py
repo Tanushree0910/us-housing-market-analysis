@@ -131,6 +131,32 @@ class GitGuardTests(unittest.TestCase):
                         "git worktree remove .worktrees/x"):
             self.assertIsNone(self.bash(command, cwd=self.wt), command)
 
+    def test_outside_repo_on_main_can_commit(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as scratch:
+            run_git(scratch, "init", "-q", "-b", "main")
+            self.assertIsNone(self.bash("git commit -m x", cwd=scratch))
+
+    def test_cd_with_variable_and_pushd_followed(self):
+        import os
+        os.environ["GOV_TEST_MAIN"] = str(self.root)
+        try:
+            self.assertEqual(decision(self.bash('cd "$GOV_TEST_MAIN" && git commit -m x', cwd=self.wt)), "deny")
+        finally:
+            del os.environ["GOV_TEST_MAIN"]
+        self.assertIsNone(self.bash(f"pushd {self.wt} && git commit -m x"))
+
+    def test_only_a_real_git_folder_is_protected(self):
+        self.assertEqual(decision(self.bash("rm -rf .git", cwd=self.wt)), "deny")
+        self.assertEqual(decision(self.bash("rm -rf backup.git", cwd=self.wt)), "ask")
+        reason = self.bash("rm -rf .git", cwd=self.wt)["hookSpecificOutput"]["permissionDecisionReason"]
+        self.assertIn("git history", reason)
+        self.assertNotIn("home folder", reason)
+
+    def test_worktree_hint_does_not_track_main(self):
+        reason = self.edit(self.root / "README.md")["hookSpecificOutput"]["permissionDecisionReason"]
+        self.assertIn("--no-track", reason)
+
     def test_rm_inside_worktree_of_single_file_allowed(self):
         self.assertIsNone(self.bash("rm .worktrees/w/sql/old.sql"))
 

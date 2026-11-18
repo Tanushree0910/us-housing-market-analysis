@@ -43,14 +43,16 @@ def decide(payload: dict, project: Path) -> dict:
     session_id = payload.get("session_id", "unknown0")
     main = hooklib.main_checkout(project)
     trees = hooklib.worktrees(main)
-    if not hooklib.state_path(project, session_id).exists():
-        hooklib.save_state(project, session_id, {
-            "date": datetime.date.today().isoformat(),
-            "head": hooklib.git(project, "rev-parse", "HEAD").strip(),
-            "status": hooklib.git_status(project),
-            "worktrees": trees,
-        })
+    exists = hooklib.state_path(project, session_id).exists()
     state = hooklib.load_state(project, session_id)
+    if not exists or "worktrees" not in state:
+        # Keep anything already recorded (date on resume, worktrees touched so far).
+        state.setdefault("date", datetime.date.today().isoformat())
+        if not state.get("head"):
+            state["head"] = hooklib.git(project, "rev-parse", "HEAD").strip()
+        state.setdefault("status", hooklib.git_status(project))
+        state["worktrees"] = trees
+        hooklib.save_state(project, session_id, state)
     journal = hooklib.journal_path(Path("."), state["date"], session_id).as_posix()
 
     sections = [
@@ -59,7 +61,7 @@ def decide(payload: dict, project: Path) -> dict:
         *_status_lines(project, main, trees),
         "BEFORE CHANGING ANYTHING (Article 5)",
         "- Work only inside a worktree on your own branch, never on main. Create one with:",
-        f"  cd {main} && git fetch origin && git worktree add .worktrees/<name> -b <branch> origin/main",
+        f"  cd {main} && git fetch origin && git worktree add --no-track .worktrees/<name> -b <branch> origin/main",
         "- Merge only when the owner asks. Never push to main.",
         "ESSENTIAL SKILLS (invoke each when it applies)",
         *[f"- {name}: {when}" for name, when in ESSENTIAL_SKILLS],

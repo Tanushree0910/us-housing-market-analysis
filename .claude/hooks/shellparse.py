@@ -132,10 +132,17 @@ def iter_commands(project: Path, command: str,
     the `cd` itself is not yielded.
     """
     cwd = start_cwd
+    stack = []
     for line_tokens in command_lines(command):
         for segment in segments(line_tokens):
             words = command_words(segment)
-            if words[:1] == ["cd"]:
-                cwd = absolute(project, words[1], cwd) if len(words) > 1 else start_cwd
+            if words[:1] in (["cd"], ["pushd"]):
+                if words[0] == "pushd":
+                    stack.append(cwd)
+                target = os.path.expandvars(words[1]) if len(words) > 1 else ""
+                cwd = absolute(project, target, cwd) if target and "$" not in target else start_cwd
+                continue
+            if words[:1] == ["popd"]:
+                cwd = stack.pop() if stack else start_cwd
                 continue
             yield segment, words, cwd

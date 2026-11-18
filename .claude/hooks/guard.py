@@ -115,8 +115,8 @@ def _writes_raw(project: Path, segment: list[str], words: list[str], cwd: Path |
     return False
 
 
-def _check_bash(project: Path, command: str) -> dict | None:
-    for segment, words, cwd in shellparse.iter_commands(project, command):
+def _check_bash(project: Path, command: str, start_cwd: Path | None) -> dict | None:
+    for segment, words, cwd in shellparse.iter_commands(project, command, start_cwd):
         if _writes_raw(project, segment, words, cwd):
             return _answer("deny", RAW_DATA_REASON)
     return None
@@ -128,7 +128,8 @@ def decide(payload: dict, project: Path) -> dict | None:
     if tool in EDIT_TOOLS:
         return _check_edit(project, tool_input)
     if tool == "Bash":
-        return _check_bash(project, tool_input.get("command", ""))
+        cwd = payload.get("cwd")
+        return _check_bash(project, tool_input.get("command", ""), Path(cwd) if cwd else None)
     return None
 
 

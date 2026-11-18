@@ -4,7 +4,7 @@ This repo is governed by `CONSTITUTION.md`. Read it before doing any work. If th
 
 ## Where you work (Article 5)
 - Never work on `main` and never change anything in the main project folder. Work only in a worktree on your own branch:
-  `cd <project folder> && git fetch origin && git worktree add .worktrees/<name> -b <branch> origin/main`
+  `cd <project folder> && git fetch origin && git worktree add --no-track .worktrees/<name> -b <branch> origin/main`
 - Never push to `main`, force-push, or delete or rename `main`. `main` changes only through a pull request.
 - Merge only when the owner asks. Every merge command raises an approval prompt.
 

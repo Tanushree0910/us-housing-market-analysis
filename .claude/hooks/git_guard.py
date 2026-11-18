@@ -30,7 +30,7 @@ def _answer(kind: str, reason: str) -> dict:
 
 def _worktree_hint(main: Path) -> str:
     return ("Create a worktree and work there instead:\n"
-            f"cd {main} && git worktree add .worktrees/<name> -b <branch> origin/main")
+            f"cd {main} && git fetch origin && git worktree add --no-track .worktrees/<name> -b <branch> origin/main")
 
 
 # ---------- where a path or command lives ----------
@@ -121,7 +121,7 @@ def _check_git(sub: str, args: list[str], place: str, branch: str, main: Path) -
     found = []
     positional = [a for a in args if not a.startswith("-")]
     flags = [a for a in args if a.startswith("-")]
-    if sub in GIT_WRITES and (place == "main" or branch in hooklib.MAIN_BRANCHES):
+    if sub in GIT_WRITES and (place == "main" or (place == "worktree" and branch in hooklib.MAIN_BRANCHES)):
         where = "the main project folder" if place == "main" else f"branch '{branch}'"
         found.append(("deny", f"'git {sub}' in {where} is blocked: agents only commit and push from a "
                               f"worktree on their own branch (CONSTITUTION.md Article 5). {_worktree_hint(main)}"))
@@ -166,9 +166,10 @@ def _check_rm(args: list[str], project: Path, cwd: Path | None, main: Path) -> t
         return None
     home = Path.home().resolve(strict=False)
     for target in (a for a in args if not a.startswith("-")):
-        if target in {"$HOME", "${HOME}", "~", "~/"} or target.rstrip("/").endswith(".git") \
-                or target.rstrip("/") == ".git":
-            return "deny", f"'rm -r {target}' could wipe the home folder or git history and is blocked (CONSTITUTION.md Article 7)."
+        if target in {"$HOME", "${HOME}", "~", "~/"}:
+            return "deny", f"'rm -r {target}' would delete the home folder and is blocked (CONSTITUTION.md Article 7)."
+        if Path(target.rstrip("/")).name == ".git":
+            return "deny", f"'rm -r {target}' would delete the repo's git history and is blocked (CONSTITUTION.md Article 7)."
         resolved = shellparse.absolute(project, target, cwd)
         here = Path(cwd or project).resolve(strict=False)
         if len(resolved.parts) <= 2 or resolved == home or main.is_relative_to(resolved) \
@@ -208,6 +209,24 @@ def _pipes_to_shell(line_tokens: list[str]) -> bool:
             if target in SHELLS or target.startswith("python"):
                 return True
     return False
+
+
+def _touched_by_command(project: Path, command: str, start_cwd: Path | None) -> set[Path]:
+    """Worktrees a command works in: its folder, a git -C folder, or one it creates."""
+    found = set()
+    for _, words, cwd in shellparse.iter_commands(project, command, start_cwd):
+        folders = [Path(cwd or project)]
+        if words and os.path.basename(words[0]) == "git":
+            sub, args, git_dir = _git_parts(words, project, cwd)
+            folders.append(Path(git_dir or cwd or project))
+            positional = [a for a in args if not a.startswith("-")]
+            if sub == "worktree" and positional[:1] == ["add"] and len(positional) > 1:
+                folders.append(shellparse.absolute(project, positional[1], git_dir or cwd))
+        for folder in folders:
+            worktree = hooklib.worktree_of(project, folder)
+            if worktree:
+                found.add(worktree)
+    return found
 
 
 def _check_bash(project: Path, command: str, start_cwd: Path | None) -> dict | None:
@@ -254,11 +273,18 @@ def _check_mcp(tool: str, tool_input: dict) -> dict | None:
 def decide(payload: dict, project: Path) -> dict | None:
     tool = payload.get("tool_name", "")
     tool_input = payload.get("tool_input") or {}
+    session_id = payload.get("session_id", "")
     if tool in EDIT_TOOLS:
+        path_text = tool_input.get("file_path") or tool_input.get("notebook_path") or ""
+        if path_text:
+            worktree = hooklib.worktree_of(project, shellparse.absolute(project, path_text))
+            hooklib.mark_touched(project, session_id, {worktree} if worktree else set())
         return _check_edit(project, tool_input)
     if tool == "Bash":
-        cwd = payload.get("cwd")
-        return _check_bash(project, tool_input.get("command", ""), Path(cwd) if cwd else None)
+        cwd = Path(payload["cwd"]) if payload.get("cwd") else None
+        command = tool_input.get("command", "")
+        hooklib.mark_touched(project, session_id, _touched_by_command(project, command, cwd))
+        return _check_bash(project, command, cwd)
     if tool.startswith("mcp__github__"):
         return _check_mcp(tool, tool_input)
     return None

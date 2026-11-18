@@ -54,7 +54,7 @@ If anything else in the repo disagrees with this document, this document wins.
 
 1. Agents never work on `main`. They never edit, commit or push in the main project folder, or on a `main` or `master` branch.
 2. Agents work only inside a git worktree at `.worktrees/<name>/`, on their own branch. They create one with:
-   `cd <project folder> && git worktree add .worktrees/<name> -b <branch> origin/main`
+   `cd <project folder> && git fetch origin && git worktree add --no-track .worktrees/<name> -b <branch> origin/main`
 3. Nobody pushes to `main`, force-pushes it, deletes it or renames it. `main` changes only through a pull request.
 4. Every change must pass the automatic checks (`python3 tools/governance_check.py` and the tests) before it is merged.
 5. Merging happens only when the owner asks for it. Every merge command (`git merge`, `gh pr merge`, GitHub merge or auto-merge) needs the owner's approval in a prompt.

@@ -10,7 +10,7 @@
 - The checker skipping `.worktrees/`.
 
 ## How
-- Ran `python3 -m unittest discover -s tests -t .` inside the worktree: 120 tests.
+- Ran `python3 -m unittest discover -s tests -t .` inside the worktree: 127 tests, 7 of them added after the final review.
 - Ran `python3 tools/governance_check.py`.
 - Ran the session start hook by hand against the real repo, to read the briefing it produces.
 

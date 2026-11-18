@@ -94,6 +94,30 @@ def worktrees(main: Path) -> dict[str, dict]:
     return found
 
 
+def worktree_of(project: Path, path: Path) -> Path | None:
+    """The .worktrees/<name> folder that contains path, or None."""
+    main = main_checkout(project)
+    try:
+        rel = Path(path).resolve(strict=False).relative_to(main)
+    except ValueError:
+        return None
+    if len(rel.parts) >= 2 and rel.parts[0] == WORKTREES_FOLDER:
+        return main / rel.parts[0] / rel.parts[1]
+    return None
+
+
+def mark_touched(project: Path, session_id: str, folders: set[Path]) -> None:
+    """Remember which worktrees this session worked in, so the end check judges only those."""
+    if not session_id or not folders:
+        return
+    state = load_state(project, session_id)
+    touched = set(state.get("touched", []))
+    new = {str(Path(f).resolve(strict=False)) for f in folders} - touched
+    if new:
+        state["touched"] = sorted(touched | new)
+        save_state(project, session_id, state)
+
+
 def repo_relative(project: Path, path: Path) -> Path | None:
     """path relative to the repo, as if it were in the main folder.
 

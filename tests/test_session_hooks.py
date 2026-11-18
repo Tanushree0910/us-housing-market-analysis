@@ -21,6 +21,7 @@ def load(name):
 
 session_start = load("session_start")
 session_end = load("session_end")
+git_guard = load("git_guard")
 
 SID = "abcd1234-ffff-0000-1111-222233334444"
 GOOD_JOURNAL = ("# Session journal\n\n## Goal\ng\n\n## What changed\nc\n\n## Tests run\nt\n\n"
@@ -85,7 +86,10 @@ class SessionEndTests(unittest.TestCase):
         return session_end.decide({"session_id": SID, **extra}, self.root)
 
     def wt_write(self, rel, text="x"):
+        """Write a file the way an agent does: through the Write tool, which the git guard sees."""
         path = self.wt / rel
+        git_guard.decide({"tool_name": "Write", "session_id": SID,
+                          "tool_input": {"file_path": str(path)}}, self.root)
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(text)
 
@@ -148,21 +152,38 @@ class SessionEndTests(unittest.TestCase):
         self.assertIsNone(self.end())
 
     def test_end_ignores_untouched_preexisting_worktree(self):
-        self.wt_write("sql/01_old.sql", "someone else's work in progress")
+        (self.wt / "sql").mkdir(exist_ok=True)
+        (self.wt / "sql" / "01_old.sql").write_text("someone else's work in progress")
         self.start()
         self.assertIsNone(self.end())
 
     def test_end_counts_new_worktree_as_changed(self):
         self.start()
+        command = "git worktree add -q .worktrees/n -b n"
+        git_guard.decide({"tool_name": "Bash", "session_id": SID, "cwd": str(self.root),
+                          "tool_input": {"command": command}}, self.root)
         run_git(self.root, "worktree", "add", "-q", ".worktrees/n", "-b", "n")
         self.assertEqual(self.end()["decision"], "block")
 
-    def test_end_blocks_new_changes_in_main_folder(self):
+    def test_end_ignores_other_sessions_worktrees(self):
         self.start()
-        (self.root / "notes.md").write_text("x")
-        result = self.end()
-        self.assertEqual(result["decision"], "block")
-        self.assertIn("main project folder", result["reason"])
+        run_git(self.root, "worktree", "add", "-q", ".worktrees/other", "-b", "other")
+        (self.root / ".worktrees" / "other" / "wip.txt").write_text("someone else's work")
+        self.wt.joinpath("wip2.txt").write_text("also not this session's")
+        self.assertIsNone(self.end())
+
+    def test_end_counts_worktree_entered_with_cd(self):
+        self.start()
+        git_guard.decide({"tool_name": "Bash", "session_id": SID, "cwd": str(self.root),
+                          "tool_input": {"command": f"cd {self.wt} && touch sql/x.sql"}}, self.root)
+        (self.wt / "sql").mkdir(exist_ok=True)
+        (self.wt / "sql" / "01_x.sql").write_text("select 1")
+        self.assertEqual(self.end()["decision"], "block")
+
+    def test_end_does_not_blame_session_for_main_folder_changes(self):
+        self.start()
+        (self.root / "notes.md").write_text("the owner's own edit")
+        self.assertIsNone(self.end())
 
 
 class SettingsTests(unittest.TestCase):
