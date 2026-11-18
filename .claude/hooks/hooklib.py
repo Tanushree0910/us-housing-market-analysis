@@ -1,5 +1,6 @@
 """Shared helpers for this repo's Claude Code hooks (see CONSTITUTION.md Article 4)."""
 import datetime
+import functools
 import json
 import os
 import subprocess
@@ -53,6 +54,40 @@ def git_status(project: Path) -> list[str]:
 
 def _lines(text: str) -> list[str]:
     return [line for line in text.splitlines() if line.strip()]
+
+
+WORKTREES_FOLDER = ".worktrees"
+MAIN_BRANCHES = {"main", "master"}
+
+
+def main_checkout(project: Path) -> Path:
+    """The repo's main folder, even when called from inside one of its worktrees."""
+    return _main_checkout(str(Path(project).resolve(strict=False)))
+
+
+@functools.lru_cache(maxsize=32)
+def _main_checkout(project_str: str) -> Path:
+    project = Path(project_str)
+    common = git(project, "rev-parse", "--path-format=absolute", "--git-common-dir").strip()
+    if not common:
+        return project
+    return Path(common).resolve(strict=False).parent
+
+
+def repo_relative(project: Path, path: Path) -> Path | None:
+    """path relative to the repo, as if it were in the main folder.
+
+    A file in .worktrees/<name>/ is treated like the same file in the main folder,
+    so rules about data/ or CONSTITUTION.md apply inside worktrees too.
+    Returns None for paths outside the repo.
+    """
+    try:
+        rel = Path(path).resolve(strict=False).relative_to(main_checkout(project))
+    except ValueError:
+        return None
+    if len(rel.parts) >= 2 and rel.parts[0] == WORKTREES_FOLDER:
+        return Path(*rel.parts[2:])
+    return rel
 
 
 def run(handler) -> None:

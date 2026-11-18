@@ -209,6 +209,32 @@ class StopTests(unittest.TestCase):
         self.assertEqual(stop_journal.decide({"session_id": other}, self.repo.root)["decision"], "block")
 
 
+class GuardWorktreeTests(unittest.TestCase):
+    def setUp(self):
+        from tests.helpers import make_repo_with_worktree
+        self.repo, self.wt = make_repo_with_worktree()
+
+    def tearDown(self):
+        self.repo.cleanup()
+
+    def edit(self, path, project=None):
+        return guard.decide({"tool_name": "Edit", "tool_input": {"file_path": str(path)}},
+                            project or self.repo.root)
+
+    def test_guard_denies_raw_csv_inside_worktree(self):
+        self.assertEqual(decision(self.edit(self.wt / "data" / "a.csv")), "deny")
+        self.assertEqual(decision(self.edit(self.wt / "data" / "a.csv", project=self.wt)), "deny")
+        self.assertEqual(decision(guard.decide(
+            {"tool_name": "Bash", "tool_input": {"command": f"cd {self.wt} && rm data/a.csv"}},
+            self.repo.root)), "deny")
+
+    def test_guard_asks_for_constitution_inside_worktree(self):
+        self.assertEqual(decision(self.edit(self.wt / "CONSTITUTION.md")), "ask")
+
+    def test_guard_allows_worktree_sql(self):
+        self.assertIsNone(self.edit(self.wt / "sql" / "01_a.sql"))
+
+
 class GuardPrecisionTests(unittest.TestCase):
     def bash(self, command):
         return guard.decide({"tool_name": "Bash", "tool_input": {"command": command}}, Path("/proj"))
