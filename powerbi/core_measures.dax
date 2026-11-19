@@ -1,0 +1,64 @@
+// Core measures for Day 19. Paste each one into Power BI Desktop via Modeling > New measure.
+// Table/column names assume the star schema: fact_home_values[home_value], fact_rent[rent],
+// dim_date[Date] (marked as date table), dim_metro[RegionType]. NOT TESTED YET - verify with the checks at the bottom.
+// Note: dim_metro and the fact views contain a 'country' row (United States). For rankings and averages
+// put dim_metro[RegionType] = "msa" as a page/visual filter; select "United States" only for the national KPI.
+
+// Average ZHVI home value for whatever metros/dates are in the current filter context
+Avg Home Value = AVERAGE ( fact_home_values[home_value] )
+
+// Average ZORI monthly rent for the current filter context
+Avg Rent = AVERAGE ( fact_rent[rent] )
+
+// Year-over-year % change in Avg Home Value (compares to the same date one year earlier; blank if no prior-year data)
+YoY % =
+VAR CurrentValue = [Avg Home Value]
+VAR PriorValue =
+    CALCULATE ( [Avg Home Value], DATEADD ( dim_date[Date], -1, YEAR ) )
+RETURN
+    DIVIDE ( CurrentValue - PriorValue, PriorValue )
+
+// Gross annual rent as % of home value. Both averages use only metros that have BOTH rent and home value
+// data in the current filter context, so the numerator and denominator cover the same metros.
+Rent-to-Price =
+VAR MetrosWithBoth =
+    FILTER (
+        dim_metro,
+        CALCULATE ( COUNTROWS ( fact_rent ) ) > 0
+            && CALCULATE ( COUNTROWS ( fact_home_values ) ) > 0
+    )
+RETURN
+    DIVIDE (
+        CALCULATE ( [Avg Rent], MetrosWithBoth ) * 12,
+        CALCULATE ( [Avg Home Value], MetrosWithBoth )
+    )
+
+// ---- Verification (must match analysis.sql, latest month = Sep 2026) ----
+// Slicer: dim_date = 2026-09-30
+//  - Metro = United States:  YoY % = 1.19%   (Q1/Q7)
+//  - Metro = Abilene, TX:    Avg Home Value = 221,508 | YoY % = 9.69% | Avg Rent = 1,990 | Rent-to-Price = 10.78%   (Q2/Q5)
+//  - Metro = Galesburg, IL:  YoY % = 11.78%   (Q2)
+// All metros (page filter dim_metro[RegionType] = "msa", dim_date = 2026-09-30), computed from SQL:
+//  - Avg Home Value = 297,435 | YoY % = 2.22% (simple average of metros, so NOT the 1.19% national figure)
+//  - Avg Rent = 1,498 (740 metros have rent that month) | Rent-to-Price = 5.59% (727 metros have both rent and home value)
+//  - These are after the dim_metro fixes (908 metros, now 928 with inventory/days-to-pending metros;
+//    the 20 extra metros have no home value or rent, so these averages don't change). Refresh the model first.
+//  - If Rent-to-Price shows about 6.05%, the metro filter isn't working (denominator uses all 894 home-value metros)
+
+// ---- Market measures (added 2026-11-19, Zillow only; README question 3) ----
+// Model setup first: in Power BI, Get data > SQL Server > [Housing Data] > tick fact_market. Then in Model view:
+//   fact_market[RegionID]   -> dim_metro[RegionID]  (many-to-one)
+//   fact_market[month_date] -> dim_date[Date]       (many-to-one)
+// inventory = homes for sale; days_to_pending = mean days for a listing to go under contract.
+
+// Average for-sale inventory for the current filter context
+Avg Inventory = AVERAGE ( fact_market[inventory] )
+
+// Average days to pending for the current filter context (blank where Zillow has no figure)
+Avg Days to Pending = AVERAGE ( fact_market[days_to_pending] )
+
+// ---- Verification for the market measures (must match 06_fact_market.sql / the CSVs) ----
+// Slicer: dim_date = 2026-09-30
+//  - Metro = Atlanta, GA:  Avg Inventory = 33,948 | Avg Days to Pending = 72
+// All metros (page filter dim_metro[RegionType] = "msa", dim_date = 2026-09-30):
+//  - Avg Inventory = 1,401.7 (926 metros) | Avg Days to Pending = 58.1 (695 metros)

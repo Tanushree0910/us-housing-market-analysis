@@ -30,7 +30,7 @@ If anything else in the repo disagrees with this document, this document wins.
 |---|---|---|
 | `data/` | raw `.csv` files (original source names), `SOURCES.md` | `Metro_zori_uc_sfrcondomfr_sm_month.csv` |
 | `sql/` | `NN_snake_case.sql`, numbered in run order | `01_load_zhvi.sql` |
-| `powerbi/` | `snake_case.pbix` | `housing_dashboard.pbix` |
+| `powerbi/` | `snake_case.pbix` (the report) and `snake_case.dax` (its measures) | `housing.pbix`, `core_measures.dax` |
 | `screenshots/` | `kebab-case.png` or `.jpg` | `rent-to-price-map.png` |
 
 3. No file may be larger than 50 MB.
@@ -115,4 +115,4 @@ If anything else in the repo disagrees with this document, this document wins.
 
 ---
 
-Version 1.1 — adopted 2026-11-18 (version 1.0 adopted 2026-11-17) — amendments are recorded in `docs/decisions/`.
+Version 1.2 — adopted 2026-11-19 (1.1: 2026-11-18, 1.0: 2026-11-17) — amendments are recorded in `docs/decisions/`.

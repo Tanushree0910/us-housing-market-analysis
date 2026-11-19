@@ -34,6 +34,14 @@ class LayoutTests(unittest.TestCase):
         self.assertEqual(len(problems), 1)
         self.assertIn("sql/LoadData.sql", problems[0])
 
+    def test_powerbi_allows_report_and_measures(self):
+        self.repo.write("powerbi/housing.pbix")
+        self.repo.write("powerbi/core_measures.dax")
+        self.assertEqual(gc.check_layout(self.repo.root), [])
+        self.repo.write("powerbi/Core Measures.dax")
+        self.repo.write("powerbi/notes.txt")
+        self.assertEqual(len(gc.check_layout(self.repo.root)), 2)
+
     def test_wrong_type_in_screenshots_flagged(self):
         self.repo.write("screenshots/chart.gif")
         problems = gc.check_layout(self.repo.root)
