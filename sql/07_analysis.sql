@@ -8,7 +8,9 @@
    - dim_metro includes one 'country' row (United States, RegionID 102001) used as the national benchmark;
      all metro rankings filter RegionType = 'msa' so the US row is never ranked against metros.
    - Rent-to-price ratio = (monthly rent x 12) / home value x 100, i.e. gross annual rent as a % of home value.
-   - Inventory change is YoY %; days-to-pending change is in days (latest month minus the same month a year earlier). */
+   - Inventory change is YoY %; days-to-pending change is in days (latest month minus the same month a year earlier).
+   - Run the whole script (F5). The questions share @latest, declared at the top, so running one question
+     on its own fails with "Must declare the scalar variable @latest". */
 
 USE [Housing Data];
 GO

@@ -69,9 +69,40 @@ class LoadScriptTests(unittest.TestCase):
 
     def test_load_script_never_replaces_existing_tables(self):
         text = (SQL / "01_load_zillow.sql").read_text(encoding="utf-8")
-        self.assertIn("already exists", text)
+        self.assertIn("already has data", text)
         self.assertNotRegex(text.upper(), r"DROP\s+TABLE\s+(IF\s+EXISTS\s+)?DBO\.(ZHVI_HOMEVALUE|ZORI_RENTALS|INVENTORY_FORSALE|DAYSTOPENDING)")
         self.assertNotRegex(text.upper(), r"TRUNCATE\s+TABLE")
+
+
+class LoadSafetyTests(unittest.TestCase):
+    """The SQL can't be run here, so these pin the safety features the final review asked for."""
+
+    def setUp(self):
+        self.text = (SQL / "01_load_zillow.sql").read_text(encoding="utf-8")
+
+    def test_create_and_insert_happen_in_one_transaction(self):
+        begin = self.text.index("BEGIN TRANSACTION")
+        commit = self.text.index("COMMIT TRANSACTION")
+        for step in ("EXEC sp_executesql @create;", "EXEC sp_executesql @insert;"):
+            self.assertLess(begin, self.text.index(step), step)
+            self.assertLess(self.text.index(step), commit, step)
+        self.assertEqual(self.text.count("EXEC sp_executesql @create"), 1)
+        self.assertIn("SET XACT_ABORT ON", self.text)
+        self.assertIn("ROLLBACK TRANSACTION", self.text)
+
+    def test_an_empty_leftover_table_is_reloaded_not_kept(self):
+        self.assertIn("is empty", self.text)
+        self.assertIn("already has data - left unchanged", self.text)
+
+    def test_long_paths_are_not_passed_through_quotename(self):
+        self.assertNotIn("QUOTENAME(@file", self.text)
+        self.assertIn("@content IS NULL", self.text)
+
+    def test_bad_rows_stop_the_load(self):
+        self.assertIn("MAXERRORS = 0", self.text)
+
+    def test_read_error_explains_access(self):
+        self.assertIn("access denied", self.text.lower())
 
 
 ALL_FILES = (ZHVI, ZORI, INVENTORY, DAYS_TO_PENDING)

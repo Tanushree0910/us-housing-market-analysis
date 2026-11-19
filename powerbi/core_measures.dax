@@ -41,7 +41,8 @@ RETURN
 // All metros (page filter dim_metro[RegionType] = "msa", dim_date = 2026-09-30), computed from SQL:
 //  - Avg Home Value = 297,435 | YoY % = 2.22% (simple average of metros, so NOT the 1.19% national figure)
 //  - Avg Rent = 1,498 (740 metros have rent that month) | Rent-to-Price = 5.59% (727 metros have both rent and home value)
-//  - These are after the dim_metro fix (908 metros); refresh the model in Power BI first.
+//  - These are after the dim_metro fixes (908 metros, now 928 with inventory/days-to-pending metros;
+//    the 20 extra metros have no home value or rent, so these averages don't change). Refresh the model first.
 //  - If Rent-to-Price shows about 6.05%, the metro filter isn't working (denominator uses all 894 home-value metros)
 
 // ---- Market measures (added 2026-11-19, Zillow only; README question 3) ----
