@@ -74,5 +74,37 @@ class LoadScriptTests(unittest.TestCase):
         self.assertNotRegex(text.upper(), r"TRUNCATE\s+TABLE")
 
 
+ALL_FILES = (ZHVI, ZORI, INVENTORY, DAYS_TO_PENDING)
+
+
+class DimensionTests(unittest.TestCase):
+    def test_dim_metro_checks_match_csv(self):
+        expect = expectations("02_dim_metro.sql")
+        ids = set().union(*(zillow_metros(f) for f in ALL_FILES))
+        self.assertEqual(int(expect["dim_metro_rows"]), len(ids))
+        self.assertEqual(int(expect["dim_metro_distinct_ids"]), len(ids))
+        self.assertEqual(int(expect["metros_missing_from_dim_metro"]), 0)
+
+    def test_metro_details_agree_across_files(self):
+        """dim_metro keeps one row per metro; that is only safe if the files agree on its details."""
+        for region_id in set().union(*(zillow_metros(f) for f in ALL_FILES)):
+            details = {tuple(zillow_metros(f)[region_id][k] for k in ("RegionName", "RegionType", "StateName", "SizeRank"))
+                       for f in ALL_FILES if region_id in zillow_metros(f)}
+            self.assertEqual(len(details), 1, region_id)
+
+    def test_dim_date_checks_match_csv(self):
+        expect = expectations("03_dim_date.sql")
+        months = sorted({month for f in ALL_FILES for _, month in zillow_long(f)})
+        first = datetime.date(int(months[0][:4]), 1, 1)
+        last = datetime.date(int(months[-1][:4]), 12, 31)
+        self.assertEqual(expect["dim_date_first"], first.isoformat())
+        self.assertEqual(expect["dim_date_last"], last.isoformat())
+        self.assertEqual(int(expect["dim_date_days"]), (last - first).days + 1)
+
+    def test_fact_views_use_the_database(self):
+        for script in ("04_fact_home_values.sql", "05_fact_rent.sql"):
+            self.assertIn("USE [Housing Data];", (SQL / script).read_text(encoding="utf-8"), script)
+
+
 if __name__ == "__main__":
     unittest.main()
