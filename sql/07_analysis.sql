@@ -1,12 +1,14 @@
-/* analysis.sql - Day 19: 8 business questions on Zillow home values (ZHVI) and rents (ZORI).
-   Uses: dbo.fact_home_values, dbo.fact_rent, dbo.dim_metro (all views over the loaded tables).
+/* 07_analysis.sql (was analysis.sql) - Day 19: 8 business questions on Zillow home values (ZHVI) and rents (ZORI),
+   plus Q9-Q10 (added 2026-11-19) on Zillow inventory and days to pending - the README's third question.
+   Uses: dbo.fact_home_values, dbo.fact_rent, dbo.fact_market, dbo.dim_metro (all views over the loaded tables).
    Conventions:
    - "Latest month" = the newest month_date in fact_home_values (2026-09-30). YoY compares to the same month a year earlier.
    - The prior-year month is found with EOMONTH(date, -12) in a join instead of LAG(12), so a metro with a missing month
      returns no YoY instead of silently comparing the wrong month.
    - dim_metro includes one 'country' row (United States, RegionID 102001) used as the national benchmark;
      all metro rankings filter RegionType = 'msa' so the US row is never ranked against metros.
-   - Rent-to-price ratio = (monthly rent x 12) / home value x 100, i.e. gross annual rent as a % of home value. */
+   - Rent-to-price ratio = (monthly rent x 12) / home value x 100, i.e. gross annual rent as a % of home value.
+   - Inventory change is YoY %; days-to-pending change is in days (latest month minus the same month a year earlier). */
 
 USE [Housing Data];
 GO
@@ -151,4 +153,72 @@ JOIN rt ON rt.RegionID = hv.RegionID
 JOIN dbo.dim_metro m ON m.RegionID = hv.RegionID
 WHERE m.RegionType = 'msa'
 ORDER BY rt.rent_yoy - hv.home_yoy DESC;
+
+-- Q9: For each metro, how did inventory and days to pending change alongside home values? (README question 3)
+-- YoY in the latest home-value month. Inventory change is %, days-to-pending change is in days.
+-- A metro without inventory or days-to-pending data for both months shows NULL in that column.
+WITH hv AS (
+    SELECT cur.RegionID, (cur.home_value / prev.home_value - 1) * 100 AS home_yoy
+    FROM dbo.fact_home_values cur
+    JOIN dbo.fact_home_values prev
+      ON prev.RegionID = cur.RegionID AND prev.month_date = EOMONTH(cur.month_date, -12)
+    WHERE cur.month_date = @latest
+),
+mk AS (
+    SELECT cur.RegionID,
+           (CAST(cur.inventory AS float) / NULLIF(prev.inventory, 0) - 1) * 100 AS inventory_yoy,
+           cur.days_to_pending - prev.days_to_pending                           AS days_to_pending_change
+    FROM dbo.fact_market cur
+    JOIN dbo.fact_market prev
+      ON prev.RegionID = cur.RegionID AND prev.month_date = EOMONTH(cur.month_date, -12)
+    WHERE cur.month_date = @latest
+)
+SELECT m.RegionName, m.SizeRank,
+       CAST(hv.home_yoy AS decimal(6,2))            AS home_value_yoy_pct,
+       CAST(mk.inventory_yoy AS decimal(7,2))       AS inventory_yoy_pct,
+       CAST(mk.days_to_pending_change AS decimal(6,1)) AS days_to_pending_change
+FROM hv
+JOIN dbo.dim_metro m ON m.RegionID = hv.RegionID
+LEFT JOIN mk ON mk.RegionID = hv.RegionID
+WHERE m.RegionType = 'msa'
+ORDER BY hv.home_yoy DESC;
+
+-- Q10: Across metros, do home values grow faster where inventory shrinks or homes sell faster? (README question 3)
+-- Pearson correlation of each metro's home value YoY % with its inventory YoY % and with its days-to-pending change.
+-- Near +1 or -1 = strong link; near 0 = little link. Each pair uses the metros that have both figures.
+-- expect q10_metros_inventory: 893
+-- expect q10_corr_home_vs_inventory: 0.0742
+-- expect q10_metros_days: 562
+-- expect q10_corr_home_vs_days: -0.0673
+WITH hv AS (
+    SELECT cur.RegionID, CAST((cur.home_value / prev.home_value - 1) * 100 AS float) AS home_yoy
+    FROM dbo.fact_home_values cur
+    JOIN dbo.fact_home_values prev
+      ON prev.RegionID = cur.RegionID AND prev.month_date = EOMONTH(cur.month_date, -12)
+    JOIN dbo.dim_metro m ON m.RegionID = cur.RegionID AND m.RegionType = 'msa'
+    WHERE cur.month_date = @latest
+),
+mk AS (
+    SELECT cur.RegionID,
+           (CAST(cur.inventory AS float) / NULLIF(prev.inventory, 0) - 1) * 100 AS inventory_yoy,
+           CAST(cur.days_to_pending - prev.days_to_pending AS float)            AS days_change
+    FROM dbo.fact_market cur
+    JOIN dbo.fact_market prev
+      ON prev.RegionID = cur.RegionID AND prev.month_date = EOMONTH(cur.month_date, -12)
+    WHERE cur.month_date = @latest
+),
+pairs AS (
+    SELECT 'inventory YoY %' AS compared_with, hv.home_yoy AS x, mk.inventory_yoy AS y
+    FROM hv JOIN mk ON mk.RegionID = hv.RegionID WHERE mk.inventory_yoy IS NOT NULL
+    UNION ALL
+    SELECT 'days to pending change', hv.home_yoy, mk.days_change
+    FROM hv JOIN mk ON mk.RegionID = hv.RegionID WHERE mk.days_change IS NOT NULL
+)
+SELECT compared_with,
+       COUNT(*) AS metros,
+       CAST((COUNT(*) * SUM(x * y) - SUM(x) * SUM(y))
+            / SQRT((COUNT(*) * SUM(x * x) - SQUARE(SUM(x))) * (COUNT(*) * SUM(y * y) - SQUARE(SUM(y))))
+            AS decimal(6,4)) AS correlation_with_home_value_yoy
+FROM pairs
+GROUP BY compared_with;
 GO

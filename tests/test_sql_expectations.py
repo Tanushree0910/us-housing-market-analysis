@@ -106,5 +106,62 @@ class DimensionTests(unittest.TestCase):
             self.assertIn("USE [Housing Data];", (SQL / script).read_text(encoding="utf-8"), script)
 
 
+def pearson(pairs: list[tuple[float, float]]) -> float:
+    n = len(pairs)
+    sx = sum(x for x, _ in pairs)
+    sy = sum(y for _, y in pairs)
+    sxy = sum(x * y for x, y in pairs)
+    sxx = sum(x * x for x, _ in pairs)
+    syy = sum(y * y for _, y in pairs)
+    return (n * sxy - sx * sy) / ((n * sxx - sx * sx) * (n * syy - sy * sy)) ** 0.5
+
+
+def market_question_pairs() -> dict[str, list[tuple[float, float]]]:
+    """README question 3, as 07_analysis.sql computes it: for each metro (not the US row) in the latest
+    home-value month, YoY % home value change against YoY % inventory change and days-to-pending change."""
+    home, inventory, days = zillow_long(ZHVI), zillow_long(INVENTORY), zillow_long(DAYS_TO_PENDING)
+    latest = max(month for _, month in home)
+    prior = months_back(latest)
+    metros = {rid for rid, row in zillow_metros(ZHVI).items() if row["RegionType"] == "msa"}
+    pairs = {"inventory": [], "days": []}
+    for rid in metros:
+        if (rid, latest) not in home or (rid, prior) not in home:
+            continue
+        home_yoy = (home[(rid, latest)] / home[(rid, prior)] - 1) * 100
+        if inventory.get((rid, prior)) and (rid, latest) in inventory:
+            pairs["inventory"].append((home_yoy, (inventory[(rid, latest)] / inventory[(rid, prior)] - 1) * 100))
+        if (rid, prior) in days and (rid, latest) in days:
+            pairs["days"].append((home_yoy, days[(rid, latest)] - days[(rid, prior)]))
+    return pairs
+
+
+class MarketTests(unittest.TestCase):
+    def test_fact_market_checks_match_csv(self):
+        expect = expectations("06_fact_market.sql")
+        inventory, days = zillow_long(INVENTORY), zillow_long(DAYS_TO_PENDING)
+        keys = set(inventory) | set(days)
+        atlanta = next(rid for rid, row in zillow_metros(INVENTORY).items() if row["RegionName"] == "Atlanta, GA")
+        self.assertEqual(int(expect["fact_market_rows"]), len(keys))
+        self.assertEqual(int(expect["fact_market_rows_with_both"]), len(set(inventory) & set(days)))
+        self.assertEqual(int(expect["fact_market_metros"]), len({rid for rid, _ in keys}))
+        self.assertEqual(expect["fact_market_first_month"], min(month for _, month in keys))
+        self.assertEqual(expect["fact_market_last_month"], max(month for _, month in keys))
+        self.assertEqual(float(expect["atlanta_inventory_2026_09"]), inventory[(atlanta, "2026-09-30")])
+        self.assertEqual(float(expect["atlanta_days_to_pending_2026_09"]), days[(atlanta, "2026-09-30")])
+
+    def test_q10_correlations_match_csv(self):
+        expect = expectations("07_analysis.sql")
+        pairs = market_question_pairs()
+        self.assertEqual(int(expect["q10_metros_inventory"]), len(pairs["inventory"]))
+        self.assertEqual(int(expect["q10_metros_days"]), len(pairs["days"]))
+        self.assertAlmostEqual(float(expect["q10_corr_home_vs_inventory"]), pearson(pairs["inventory"]), places=3)
+        self.assertAlmostEqual(float(expect["q10_corr_home_vs_days"]), pearson(pairs["days"]), places=3)
+
+    def test_dax_has_market_measures(self):
+        dax = (REPO / "powerbi" / "core_measures.dax").read_text(encoding="utf-8")
+        self.assertIn("Avg Inventory = AVERAGE ( fact_market[inventory] )", dax)
+        self.assertIn("Avg Days to Pending = AVERAGE ( fact_market[days_to_pending] )", dax)
+
+
 if __name__ == "__main__":
     unittest.main()
