@@ -189,6 +189,10 @@ INSERT #check SELECT 'US rent index 2026-09 (Sep 2015 = 100)', '163.63',
      FROM core.metro_month AS n JOIN core.metro_month AS b ON b.metro_id = n.metro_id
      WHERE n.metro_id = 102001 AND n.month_end = '2026-09-30' AND b.month_end = '2015-09-30');
 
+-- U.S. rent-to-price a year earlier (the "+0.09 points" in the README: 6.33 - 6.24).
+INSERT #check SELECT 'US rent_to_price 2025-09', '6.24',
+    (SELECT CAST(CAST(ROUND(rent_to_price_pct, 2) AS DECIMAL(9, 2)) AS NVARCHAR(30)) FROM rpt.v_rent_to_price WHERE metro_id = 102001 AND month_end = '2025-09-30');
+
 -- Where the fastest and slowest large metros are.
 INSERT #check SELECT 'top 5 large metros in NY or CT', '4',
     (SELECT COUNT(*) FROM (SELECT TOP (5) m.state_code FROM rpt.v_home_value_growth AS g JOIN core.metro AS m ON m.metro_id = g.metro_id
