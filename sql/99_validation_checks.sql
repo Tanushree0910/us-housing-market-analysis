@@ -38,8 +38,13 @@ INSERT #check SELECT 'days_to_pending month columns', '104',
 INSERT #check SELECT 'name of 394913', 'New York, NY', (SELECT RegionName FROM raw.zhvi_wide WHERE RegionID = 394913);
 
 -- The byte-order mark must be stripped from the first header name (Review Focus 2).
+-- Compare the character code, not the text: this collation ignores U+FEFF, so N'RegionID' = NCHAR(65279) + N'RegionID'.
 INSERT #check SELECT 'first column of raw.zhvi_wide', 'RegionID',
     (SELECT name FROM sys.columns WHERE object_id = OBJECT_ID('raw.zhvi_wide') AND column_id = 1);
+INSERT #check SELECT 'first character of raw.zhvi_wide column 1 (82 = R, 65279 = BOM)', '82',
+    (SELECT CAST(UNICODE(name) AS NVARCHAR(10)) FROM sys.columns WHERE object_id = OBJECT_ID('raw.zhvi_wide') AND column_id = 1);
+-- Sanity line: the check above can fail, i.e. a BOM-prefixed name does not start with code 82.
+INSERT #check SELECT 'BOM check can detect a BOM', '65279', CAST(UNICODE(NCHAR(65279) + N'RegionID') AS NVARCHAR(10));
 
 -- The last month column must hold no carriage return from Windows line endings (Review Focus 2).
 INSERT #check SELECT 'US zhvi last month value', '366157.1523869674', (SELECT [2026-09-30] FROM raw.zhvi_wide WHERE RegionID = 102001);

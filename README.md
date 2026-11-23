@@ -6,7 +6,7 @@ SQL Server + Power BI analysis of home values, rents and housing supply across U
 
 **In short:** since 2015, U.S. home values rose faster than rents (+88% vs +64%). Over the last year that flipped: rents rose 2.70% and home values 1.19%. Growth is now led by the Northeast, while Texas and Florida metros are cooling.
 
-Every number in this README and on the dashboard is checked by [`sql/99_validation_checks.sql`](sql/99_validation_checks.sql) against values computed separately from the raw CSV files (58 checks, all passing).
+Every number in this README and on the dashboard is checked by [`sql/99_validation_checks.sql`](sql/99_validation_checks.sql) against values computed separately from the raw CSV files (60 checks, all passing).
 
 ## Questions and findings
 
@@ -54,7 +54,7 @@ rpt.*  views ──► 07 star schema (dim_metro, dim_month, fact_metro_month) �
 | [`05_rent_to_price.sql`](sql/05_rent_to_price.sql) | Rent-to-price ratio |
 | [`06_supply_vs_price.sql`](sql/06_supply_vs_price.sql) | Inventory and days-to-pending changes, and Pearson correlations built from plain aggregates |
 | [`07_powerbi_views.sql`](sql/07_powerbi_views.sql) | Star-schema views for Power BI, including a gap-free month calendar |
-| [`99_validation_checks.sql`](sql/99_validation_checks.sql) | 58 checks; the run fails if any check fails |
+| [`99_validation_checks.sql`](sql/99_validation_checks.sql) | 60 checks; the run fails if any check fails |
 
 The dashboard is a Power BI Project ([`powerbi/us_housing_market.pbip`](powerbi/us_housing_market.pbip)), so the model (TMDL) and every page and visual (PBIR) are plain text you can read on GitHub. A [`.pbix` copy](powerbi/us_housing_market.pbix) is there for one-click download.
 
@@ -76,13 +76,15 @@ You need SQL Server 2022 or later (the calendar uses `GENERATE_SERIES`), [sqlcmd
    sqlcmd -S localhost -E -b -I -i sql/99_validation_checks.sql
    ```
 
+   `BULK INSERT` reads `DataDir` on the SQL Server machine. With `-E` (Windows login) it uses your own file rights, so the repo folder works. With a SQL login or a remote server, copy `data/` to a folder the server can read (for example `C:\HousingData`) and point `DataDir` there.
+
    The last script prints every check and ends with `All validation checks passed.` A full rebuild takes under 10 seconds.
 3. Open `powerbi/us_housing_market.pbip` (or the `.pbix`) in Power BI Desktop. If your server is not `localhost`, change the `SqlServer` parameter (Transform data → Edit parameters), then click Refresh.
 
 ## Skills shown
 
 - **SQL:** dynamic SQL (building tables from CSV headers), wide-to-long unpivot, window functions (`ROW_NUMBER`, `RANK`), self-joins for exact year-over-year comparisons, views, error handling with `TRY…CATCH`, re-runnable scripts.
-- **Data quality:** 58 automated validation checks against independently computed reference values; bugs logged and fixed (see [`logs/bugs/`](logs/bugs)).
+- **Data quality:** 60 automated validation checks against independently computed reference values; bugs logged and fixed (see [`logs/bugs/`](logs/bugs)).
 - **Power BI:** star schema, DAX measures (`CALCULATE`, `RANKX`, `HASONEVALUE`), parameterised data source, custom theme, edited interactions between visuals, Power BI Project format (TMDL + PBIR) under version control.
 
 ## Data

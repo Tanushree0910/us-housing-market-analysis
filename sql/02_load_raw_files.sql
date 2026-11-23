@@ -59,7 +59,8 @@ BEGIN
 
         SET @sql = N'BULK INSERT ' + @target + N' FROM N''' + @path + N'''
             WITH (FORMAT = ''CSV'', FIRSTROW = 2, FIELDQUOTE = ''"'', FIELDTERMINATOR = '','',
-                  ROWTERMINATOR = ''0x0a'', CODEPAGE = ''65001'', TABLOCK);';
+                  ROWTERMINATOR = ''0x0a'', CODEPAGE = ''65001'', TABLOCK,
+                  MAXERRORS = 0);';  -- any bad row fails the load (default 10 would skip it silently)
         EXEC sys.sp_executesql @sql;
 
         -- 6. A Windows line ending leaves \r on the last column; remove it so values stay clean (Review Focus 2).
