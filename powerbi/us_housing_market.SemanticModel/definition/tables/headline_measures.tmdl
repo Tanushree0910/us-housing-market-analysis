@@ -125,6 +125,232 @@ table headline_measures
 		displayFolder: Headline
 		lineageTag: d35e08f2-af80-4c6c-a1cc-34500771e869
 
+	/// Subtitle shown in the navy header of every page.
+	measure 'Header Subtitle' = "Zillow metro data  ·  latest month: " & [Latest Month Label]
+		displayFolder: Report
+		lineageTag: 782c624c-e68e-4c73-be60-f1715be55690
+
+	/// U.S. typical home value.
+	measure 'US Home Value' = CALCULATE ( [Home Value], REMOVEFILTERS ( dim_metro ), dim_metro[metro_id] = 102001 )
+		formatString: \$#,0
+		displayFolder: Report
+		lineageTag: 01079d6b-60a1-4a91-9684-a8d74b99e7c4
+
+	/// U.S. 1-year change in home value.
+	measure 'US Home Value YoY %' = CALCULATE ( [Home Value YoY %], REMOVEFILTERS ( dim_metro ), dim_metro[metro_id] = 102001 )
+		formatString: 0.00%
+		displayFolder: Report
+		lineageTag: 75409924-ec4d-4515-8ec7-9e1e04222664
+
+	/// U.S. typical monthly rent.
+	measure 'US Rent' = CALCULATE ( [Rent], REMOVEFILTERS ( dim_metro ), dim_metro[metro_id] = 102001 )
+		formatString: \$#,0
+		displayFolder: Report
+		lineageTag: 01b7d391-71d1-46a8-b99a-44ca9f75177d
+
+	/// U.S. 1-year change in rent.
+	measure 'US Rent YoY %' = CALCULATE ( [Rent YoY %], REMOVEFILTERS ( dim_metro ), dim_metro[metro_id] = 102001 )
+		formatString: 0.00%
+		displayFolder: Report
+		lineageTag: cfbc520d-df25-4602-8243-2d0b2b59c804
+
+	/// U.S. yearly rent as a share of home value.
+	measure 'US Rent to Price %' = CALCULATE ( [Rent to Price %], REMOVEFILTERS ( dim_metro ), dim_metro[metro_id] = 102001 )
+		formatString: 0.00%
+		displayFolder: Report
+		lineageTag: a0be59ea-34a5-4bac-b74a-308e6e4e0332
+
+	/// Change in the U.S. rent-to-price ratio over a year, in percentage points.
+	measure 'US Rent to Price Change' =
+			VAR m = MAX ( dim_month[month_end] )
+			VAR ratio_now = [US Rent to Price %]
+			VAR ratio_before = CALCULATE ( [US Rent to Price %], REMOVEFILTERS ( dim_month ), dim_month[month_end] = EOMONTH ( m, -12 ) )
+			RETURN
+			    IF ( NOT ISBLANK ( ratio_now ) && NOT ISBLANK ( ratio_before ), ratio_now - ratio_before )
+		formatString: 0.00%
+		displayFolder: Report
+		lineageTag: 25bf4ac0-2ff5-4d6c-b220-e70ca69adb80
+
+	/// Card caption: U.S. home value change vs a year earlier.
+	measure 'US Home Value Change Label' =
+			VAR d = [US Home Value YoY %]
+			RETURN
+			    IF ( NOT ISBLANK ( d ), IF ( d >= 0, "▲ ", "▼ " ) & FORMAT ( d, "+0.00%;-0.00%" ) & " vs a year earlier" )
+		displayFolder: Report
+		lineageTag: 2a596f1f-c310-4098-bea5-24ad69799c95
+
+	/// Card caption: U.S. rent change vs a year earlier.
+	measure 'US Rent Change Label' =
+			VAR d = [US Rent YoY %]
+			RETURN
+			    IF ( NOT ISBLANK ( d ), IF ( d >= 0, "▲ ", "▼ " ) & FORMAT ( d, "+0.00%;-0.00%" ) & " vs a year earlier" )
+		displayFolder: Report
+		lineageTag: cab74ecd-7b82-411e-81c4-246088baaed3
+
+	/// Card caption: U.S. rent-to-price change in percentage points.
+	measure 'US Rent to Price Change Label' =
+			VAR d = [US Rent to Price Change]
+			RETURN
+			    IF ( NOT ISBLANK ( d ), IF ( d >= 0, "▲ ", "▼ " ) & FORMAT ( d * 100, "+0.00;-0.00" ) & " pts vs a year earlier" )
+		displayFolder: Report
+		lineageTag: 7613aab4-4f8e-426c-8e26-6b3fa72b7e52
+
+	/// Green for up, red for down.
+	measure 'US Home Value Change Color' = IF ( [US Home Value YoY %] >= 0, "#006300", "#b3261e" )
+		displayFolder: Report
+		lineageTag: 5c14eda9-ae7b-440c-a8d9-9f7c0bc5c120
+
+	/// Green for up, red for down.
+	measure 'US Rent Change Color' = IF ( [US Rent YoY %] >= 0, "#006300", "#b3261e" )
+		displayFolder: Report
+		lineageTag: 422b717b-c525-48b0-91c2-fa8b073d9c2b
+
+	/// Green for up, red for down.
+	measure 'US Rent to Price Change Color' = IF ( [US Rent to Price Change] >= 0, "#006300", "#b3261e" )
+		displayFolder: Report
+		lineageTag: d05023e3-4bb4-466a-991a-7d582e27a9f3
+
+	/// U.S. home value, Sep 2015 = 100, shown from Sep 2015.
+	measure 'US Home Value Index' = IF ( MAX ( dim_month[month_end] ) >= DATE ( 2015, 9, 30 ), CALCULATE ( [Home Value Index], REMOVEFILTERS ( dim_metro ), dim_metro[metro_id] = 102001 ) )
+		formatString: 0.0
+		displayFolder: Report
+		lineageTag: 124afa1e-8c95-4e43-afd4-374dd3084fb7
+
+	/// U.S. rent, Sep 2015 = 100, shown from Sep 2015.
+	measure 'US Rent Index' = IF ( MAX ( dim_month[month_end] ) >= DATE ( 2015, 9, 30 ), CALCULATE ( [Rent Index], REMOVEFILTERS ( dim_metro ), dim_metro[metro_id] = 102001 ) )
+		formatString: 0.0
+		displayFolder: Report
+		lineageTag: eac46a06-4ad9-49f4-bafc-57dabd0bbec6
+
+	/// U.S. days from listing to pending sale.
+	measure 'US Days to Pending' = CALCULATE ( [Days to Pending], REMOVEFILTERS ( dim_metro ), dim_metro[metro_id] = 102001 )
+		formatString: 0
+		displayFolder: Report
+		lineageTag: dabc60cc-afb1-4563-94bf-c9b1a1d3de10
+
+	/// Rank of a large metro by 1-year home value growth, fastest = 1, within the selected states.
+	measure 'Growth Rank High' =
+			VAR v = [Home Value YoY %]
+			RETURN
+			    IF (
+			        HASONEVALUE ( dim_metro[metro_id] )
+			            && NOT ISBLANK ( v )
+			            && SELECTEDVALUE ( dim_metro[is_large_metro] ) = TRUE (),
+			        RANKX (
+			            FILTER (
+			                FILTER ( ALLSELECTED ( dim_metro ), dim_metro[is_large_metro] = TRUE () ),
+			                NOT ISBLANK ( [Home Value YoY %] )
+			            ),
+			            [Home Value YoY %],
+			            v,
+			            DESC,
+			            Dense
+			        )
+			    )
+		formatString: 0
+		displayFolder: Report
+		lineageTag: 0a80a07e-763d-4ef8-bf5e-533f03e90e40
+
+	/// Rank of a large metro by 1-year home value growth, slowest = 1, within the selected states.
+	measure 'Growth Rank Low' =
+			VAR v = [Home Value YoY %]
+			RETURN
+			    IF (
+			        HASONEVALUE ( dim_metro[metro_id] )
+			            && NOT ISBLANK ( v )
+			            && SELECTEDVALUE ( dim_metro[is_large_metro] ) = TRUE (),
+			        RANKX (
+			            FILTER (
+			                FILTER ( ALLSELECTED ( dim_metro ), dim_metro[is_large_metro] = TRUE () ),
+			                NOT ISBLANK ( [Home Value YoY %] )
+			            ),
+			            [Home Value YoY %],
+			            v,
+			            ASC,
+			            Dense
+			        )
+			    )
+		formatString: 0
+		displayFolder: Report
+		lineageTag: 79abd741-6ec8-4dd0-8887-790c9aa53a2d
+
+	/// 1-year growth, only for the 5 fastest-growing large metros.
+	measure 'Top 5 Growth' =
+			VAR r = [Growth Rank High]
+			RETURN
+				IF ( NOT ISBLANK ( r ) && r <= 5, [Home Value YoY %] )
+		formatString: 0.00%
+		displayFolder: Report
+		lineageTag: b5eb4d91-3a0f-4537-98f4-4d6bc3f240a6
+
+	/// 1-year growth, only for the 10 fastest-growing large metros.
+	measure 'Top 10 Growth' =
+			VAR r = [Growth Rank High]
+			RETURN
+				IF ( NOT ISBLANK ( r ) && r <= 10, [Home Value YoY %] )
+		formatString: 0.00%
+		displayFolder: Report
+		lineageTag: 8608ae46-b2b0-49c7-9a97-5802b9027545
+
+	/// 1-year growth, only for the 10 slowest-growing large metros.
+	measure 'Bottom 10 Growth' =
+			VAR r = [Growth Rank Low]
+			RETURN
+				IF ( NOT ISBLANK ( r ) && r <= 10, [Home Value YoY %] )
+		formatString: 0.00%
+		displayFolder: Report
+		lineageTag: b86643cb-0a63-44f2-8a63-7ad7a710303e
+
+	/// Home value of the selected metro, or the U.S. when none is selected.
+	measure 'Trend Home Value' = IF ( HASONEVALUE ( dim_metro[metro_id] ), [Home Value], [US Home Value] )
+		formatString: \$#,0
+		displayFolder: Report
+		lineageTag: 286097e7-257a-4bb4-bb71-43ca26e88aa6
+
+	/// Inventory change, large metros only (for the scatter).
+	measure 'Large Metro Inventory YoY %' = IF ( SELECTEDVALUE ( dim_metro[is_large_metro] ) = TRUE (), [Inventory YoY %] )
+		formatString: 0.00%
+		displayFolder: Report
+		lineageTag: 46209ed5-d704-4e00-8c28-05c66fca3082
+
+	/// Home value change, large metros only (for the scatter).
+	measure 'Large Metro Home Value YoY %' = IF ( SELECTEDVALUE ( dim_metro[is_large_metro] ) = TRUE (), [Home Value YoY %] )
+		formatString: 0.00%
+		displayFolder: Report
+		lineageTag: 50a18c0c-731c-4fa0-9050-bd4eeee9072c
+
+	/// Rank of a large metro by rent-to-price, highest = 1, within the selected states.
+	measure 'Rent to Price Rank' =
+			VAR v = [Rent to Price %]
+			RETURN
+				IF (
+					HASONEVALUE ( dim_metro[metro_id] )
+						&& NOT ISBLANK ( v )
+						&& SELECTEDVALUE ( dim_metro[is_large_metro] ) = TRUE (),
+					RANKX (
+						FILTER (
+							FILTER ( ALLSELECTED ( dim_metro ), dim_metro[is_large_metro] = TRUE () ),
+							NOT ISBLANK ( [Rent to Price %] )
+						),
+						[Rent to Price %],
+						v,
+						DESC,
+						Dense
+					)
+				)
+		formatString: 0
+		displayFolder: Report
+		lineageTag: efcf0c7d-dc98-4d84-b618-5f31f480268b
+
+	/// Rent-to-price, only for the 20 large metros with the highest ratio.
+	measure 'Top 20 Rent to Price' =
+			VAR r = [Rent to Price Rank]
+			RETURN
+				IF ( NOT ISBLANK ( r ) && r <= 20, [Rent to Price %] )
+		formatString: 0.00%
+		displayFolder: Report
+		lineageTag: 7c41d90d-a122-4b47-8bea-89ea9c6f6e01
+
 	column _placeholder
 		dataType: string
 		isHidden

@@ -19,3 +19,5 @@ ref table fact_metro_month
 ref table supply_price_correlation
 ref table headline_measures
 
+ref cultureInfo en-US
+
