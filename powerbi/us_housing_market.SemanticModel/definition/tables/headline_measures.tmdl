@@ -1,0 +1,138 @@
+table headline_measures
+	lineageTag: ee996401-6990-4c7b-8127-ba8de561a92e
+
+	/// Typical home value (ZHVI) in the latest month in context.
+	measure 'Home Value' =
+			VAR m = MAX ( dim_month[month_end] )
+			RETURN
+				IF (
+					HASONEVALUE ( dim_metro[metro_id] ),
+					CALCULATE ( SUM ( fact_metro_month[home_value] ), dim_month[month_end] = m )
+				)
+		formatString: \$#,0
+		displayFolder: Headline
+		lineageTag: b1ab1128-369c-46e4-8589-1b5cb2847eb6
+
+	/// Change in home value vs the same month a year earlier.
+	measure 'Home Value YoY %' =
+			VAR m = MAX ( dim_month[month_end] )
+			RETURN
+				IF (
+					HASONEVALUE ( dim_metro[metro_id] ),
+					CALCULATE ( SUM ( fact_metro_month[home_value_yoy_pct] ), dim_month[month_end] = m ) / 100
+				)
+		formatString: 0.00%
+		displayFolder: Headline
+		lineageTag: 53cecc8f-fe28-40e7-a769-9d8b476ca75f
+
+	/// Typical monthly rent (ZORI) in the latest month in context.
+	measure Rent =
+			VAR m = MAX ( dim_month[month_end] )
+			RETURN
+				IF (
+					HASONEVALUE ( dim_metro[metro_id] ),
+					CALCULATE ( SUM ( fact_metro_month[rent_monthly] ), dim_month[month_end] = m )
+				)
+		formatString: \$#,0
+		displayFolder: Headline
+		lineageTag: 0ca56b8e-d25a-4820-a985-e1f0355219de
+
+	/// Change in rent vs the same month a year earlier.
+	measure 'Rent YoY %' =
+			VAR m = MAX ( dim_month[month_end] )
+			RETURN
+				IF (
+					HASONEVALUE ( dim_metro[metro_id] ),
+					CALCULATE ( SUM ( fact_metro_month[rent_yoy_pct] ), dim_month[month_end] = m ) / 100
+				)
+		formatString: 0.00%
+		displayFolder: Headline
+		lineageTag: 9f43e5ee-c2cd-40fe-843e-9615bbcef91b
+
+	/// A year of rent as a share of the home value.
+	measure 'Rent to Price %' =
+			VAR m = MAX ( dim_month[month_end] )
+			RETURN
+				IF (
+					HASONEVALUE ( dim_metro[metro_id] ),
+					CALCULATE ( SUM ( fact_metro_month[rent_to_price_pct] ), dim_month[month_end] = m ) / 100
+				)
+		formatString: 0.00%
+		displayFolder: Headline
+		lineageTag: 5e5e90e0-1d9c-4cc0-a9b7-af322c7dccc0
+
+	/// Change in homes for sale vs a year earlier.
+	measure 'Inventory YoY %' =
+			VAR m = MAX ( dim_month[month_end] )
+			RETURN
+				IF (
+					HASONEVALUE ( dim_metro[metro_id] ),
+					CALCULATE ( SUM ( fact_metro_month[inventory_yoy_pct] ), dim_month[month_end] = m ) / 100
+				)
+		formatString: 0.00%
+		displayFolder: Headline
+		lineageTag: 6933fd42-cea5-4bfe-99b3-0b7d16e97d64
+
+	/// Days from listing to pending sale.
+	measure 'Days to Pending' =
+			VAR m = MAX ( dim_month[month_end] )
+			RETURN
+				IF (
+					HASONEVALUE ( dim_metro[metro_id] ),
+					CALCULATE ( SUM ( fact_metro_month[days_to_pending] ), dim_month[month_end] = m )
+				)
+		formatString: 0
+		displayFolder: Headline
+		lineageTag: 0c38f848-d742-4cfd-8f36-a29917fd40b0
+
+	/// Home value with Sep 2015 = 100.
+	measure 'Home Value Index' =
+			VAR base =
+				CALCULATE ( [Home Value], REMOVEFILTERS ( dim_month ), dim_month[month_end] = DATE ( 2015, 9, 30 ) )
+			RETURN
+				DIVIDE ( [Home Value], base ) * 100
+		formatString: 0.0
+		displayFolder: Headline
+		lineageTag: fe6d17a2-6f7f-4d8a-aba0-08669a41cf59
+
+	/// Rent with Sep 2015 = 100.
+	measure 'Rent Index' =
+			VAR base =
+				CALCULATE ( [Rent], REMOVEFILTERS ( dim_month ), dim_month[month_end] = DATE ( 2015, 9, 30 ) )
+			RETURN
+				DIVIDE ( [Rent], base ) * 100
+		formatString: 0.0
+		displayFolder: Headline
+		lineageTag: 3c3c4610-0bcc-420f-a458-cf16c5a4ec0b
+
+	/// Correlation across the largest metros between 1-year inventory change and 1-year home value change.
+	measure 'Inventory vs Price r' =
+			VAR m = MAX ( dim_month[month_end] )
+			RETURN
+				CALCULATE (
+					MAX ( supply_price_correlation[r_inventory_vs_price] ),
+					supply_price_correlation[month_end] = m
+				)
+		formatString: 0.00
+		displayFolder: Headline
+		lineageTag: 168ae40a-3cb8-4d06-bec0-1a254d94b148
+
+	/// The latest month in context, e.g. Sep 2026.
+	measure 'Latest Month Label' =
+			VAR m = MAX ( dim_month[month_end] )
+			RETURN
+				LOOKUPVALUE ( dim_month[month_label], dim_month[month_end], m )
+		displayFolder: Headline
+		lineageTag: d35e08f2-af80-4c6c-a1cc-34500771e869
+
+	column _placeholder
+		dataType: string
+		isHidden
+		lineageTag: b753cb4e-b756-4b8f-9f58-87a584193145
+		summarizeBy: none
+		sourceColumn: _placeholder
+
+	partition headline_measures = m
+		mode: import
+		source = #table(type table [_placeholder = text], {})
+

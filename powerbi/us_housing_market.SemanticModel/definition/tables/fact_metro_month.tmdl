@@ -1,0 +1,93 @@
+table fact_metro_month
+	lineageTag: 3bf4fae5-92d9-457c-bbcf-68770a0068af
+
+	column metro_id
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: 432f627d-b3d1-43e2-86d3-bd2dd1ab97f7
+		summarizeBy: none
+		sourceColumn: metro_id
+
+	column month_end
+		dataType: dateTime
+		isHidden
+		formatString: mmm yyyy
+		lineageTag: ef26e6b5-fc0c-4835-8f92-a166b497a5b0
+		summarizeBy: none
+		sourceColumn: month_end
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column home_value
+		dataType: double
+		formatString: \$#,0
+		lineageTag: 8c5de302-2561-4745-9dc7-1993a5722f3d
+		summarizeBy: none
+		sourceColumn: home_value
+
+	column rent_monthly
+		dataType: double
+		formatString: \$#,0
+		lineageTag: d5ba46f7-5041-45a4-a80e-394393b3965a
+		summarizeBy: none
+		sourceColumn: rent_monthly
+
+	column for_sale_inventory
+		dataType: int64
+		formatString: #,0
+		lineageTag: c0837f8a-4d8f-4ed8-8865-bd1901819ea2
+		summarizeBy: none
+		sourceColumn: for_sale_inventory
+
+	column days_to_pending
+		dataType: int64
+		formatString: 0
+		lineageTag: eb6e2679-41b0-4bec-a801-ee198ba3c85d
+		summarizeBy: none
+		sourceColumn: days_to_pending
+
+	column home_value_yoy_pct
+		dataType: double
+		formatString: 0.00
+		lineageTag: b27c22fd-fdd2-4faa-9fcb-d84777ec68d9
+		summarizeBy: none
+		sourceColumn: home_value_yoy_pct
+
+	column rent_yoy_pct
+		dataType: double
+		formatString: 0.00
+		lineageTag: 2caedfbd-3f9d-41d9-8996-e7e4b010ed7e
+		summarizeBy: none
+		sourceColumn: rent_yoy_pct
+
+	column rent_to_price_pct
+		dataType: double
+		formatString: 0.00
+		lineageTag: 709f1509-4459-4099-a311-1488be1dcda3
+		summarizeBy: none
+		sourceColumn: rent_to_price_pct
+
+	column inventory_yoy_pct
+		dataType: double
+		formatString: 0.00
+		lineageTag: a1cb2fa9-2f9a-47fe-b4e6-fb79b9d13d6f
+		summarizeBy: none
+		sourceColumn: inventory_yoy_pct
+
+	column days_to_pending_yoy_change
+		dataType: int64
+		formatString: 0
+		lineageTag: 6b290313-7981-4bf0-b8a1-b5cf1ada8774
+		summarizeBy: none
+		sourceColumn: days_to_pending_yoy_change
+
+	partition fact_metro_month = m
+		mode: import
+		source =
+				let
+					Source = Sql.Database(SqlServer, SqlDatabase),
+					rpt_view = Source{[Schema = "rpt", Item = "fact_metro_month"]}[Data]
+				in
+					rpt_view
+

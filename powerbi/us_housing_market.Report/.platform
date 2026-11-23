@@ -1,0 +1,11 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "Report",
+    "displayName": "us_housing_market"
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "218dd935-8827-4727-b6cb-78277d4b1715"
+  }
+}

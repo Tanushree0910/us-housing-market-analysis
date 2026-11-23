@@ -1,0 +1,21 @@
+model Model
+	culture: en-US
+	defaultPowerBIDataSourceVersion: powerBI_V3
+	sourceQueryCulture: en-US
+	valueFilterBehavior: independent
+	dataAccessOptions
+		legacyRedirects
+		returnErrorValuesAsNull
+
+annotation __PBI_TimeIntelligenceEnabled = 0
+
+annotation PBI_QueryOrder = ["SqlServer","SqlDatabase","dim_metro","dim_month","fact_metro_month","supply_price_correlation","headline_measures"]
+
+annotation PBI_ProTooling = ["DevMode"]
+
+ref table dim_metro
+ref table dim_month
+ref table fact_metro_month
+ref table supply_price_correlation
+ref table headline_measures
+

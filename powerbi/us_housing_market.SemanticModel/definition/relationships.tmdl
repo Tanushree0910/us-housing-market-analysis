@@ -1,0 +1,8 @@
+relationship fact_metro_month_to_dim_metro
+	fromColumn: fact_metro_month.metro_id
+	toColumn: dim_metro.metro_id
+
+relationship fact_metro_month_to_dim_month
+	fromColumn: fact_metro_month.month_end
+	toColumn: dim_month.month_end
+

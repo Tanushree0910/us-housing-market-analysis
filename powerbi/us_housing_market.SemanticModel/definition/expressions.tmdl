@@ -1,0 +1,10 @@
+expression SqlServer = "localhost" meta [IsParameterQuery = true, Type = "Text", IsParameterQueryRequired = true]
+	lineageTag: 7393548f-72fd-450d-ac18-8cdd8bea66b8
+
+	annotation PBI_ResultType = Text
+
+expression SqlDatabase = "HousingMarket" meta [IsParameterQuery = true, Type = "Text", IsParameterQueryRequired = true]
+	lineageTag: 358e6760-3afd-4a97-b764-76381b37357c
+
+	annotation PBI_ResultType = Text
+
