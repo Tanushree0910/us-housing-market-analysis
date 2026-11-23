@@ -32,11 +32,191 @@
               {
                 "textRuns": [
                   {
-                    "value": "Takeaways are added after validation (plan Task 13).",
+                    "value": " ",
+                    "textStyle": {
+                      "fontFamily": "Segoe UI",
+                      "fontSize": "6pt"
+                    }
+                  }
+                ]
+              },
+              {
+                "textRuns": [
+                  {
+                    "value": "Prices outran rents over 11 years.",
                     "textStyle": {
                       "fontFamily": "Segoe UI",
                       "fontSize": "10pt",
-                      "color": "#898781"
+                      "fontWeight": "bold",
+                      "color": "#0b0b0b"
+                    }
+                  },
+                  {
+                    "value": " Since Sep 2015, U.S. home values rose 88% and rents 64%.",
+                    "textStyle": {
+                      "fontFamily": "Segoe UI",
+                      "fontSize": "10pt",
+                      "color": "#52514e"
+                    }
+                  }
+                ]
+              },
+              {
+                "textRuns": [
+                  {
+                    "value": " ",
+                    "textStyle": {
+                      "fontFamily": "Segoe UI",
+                      "fontSize": "6pt"
+                    }
+                  }
+                ]
+              },
+              {
+                "textRuns": [
+                  {
+                    "value": "The last year flipped it.",
+                    "textStyle": {
+                      "fontFamily": "Segoe UI",
+                      "fontSize": "10pt",
+                      "fontWeight": "bold",
+                      "color": "#0b0b0b"
+                    }
+                  },
+                  {
+                    "value": " Rents rose 2.70% while home values rose 1.19%.",
+                    "textStyle": {
+                      "fontFamily": "Segoe UI",
+                      "fontSize": "10pt",
+                      "color": "#52514e"
+                    }
+                  }
+                ]
+              },
+              {
+                "textRuns": [
+                  {
+                    "value": " ",
+                    "textStyle": {
+                      "fontFamily": "Segoe UI",
+                      "fontSize": "6pt"
+                    }
+                  }
+                ]
+              },
+              {
+                "textRuns": [
+                  {
+                    "value": "The Northeast leads growth.",
+                    "textStyle": {
+                      "fontFamily": "Segoe UI",
+                      "fontSize": "10pt",
+                      "fontWeight": "bold",
+                      "color": "#0b0b0b"
+                    }
+                  },
+                  {
+                    "value": " 4 of the 5 fastest-growing large metros are in New York or Connecticut; Syracuse is up 6.62%.",
+                    "textStyle": {
+                      "fontFamily": "Segoe UI",
+                      "fontSize": "10pt",
+                      "color": "#52514e"
+                    }
+                  }
+                ]
+              },
+              {
+                "textRuns": [
+                  {
+                    "value": " ",
+                    "textStyle": {
+                      "fontFamily": "Segoe UI",
+                      "fontSize": "6pt"
+                    }
+                  }
+                ]
+              },
+              {
+                "textRuns": [
+                  {
+                    "value": "The Sun Belt is cooling.",
+                    "textStyle": {
+                      "fontFamily": "Segoe UI",
+                      "fontSize": "10pt",
+                      "fontWeight": "bold",
+                      "color": "#0b0b0b"
+                    }
+                  },
+                  {
+                    "value": " 7 of the 10 slowest are in Texas or Florida; Austin is down 4.31%.",
+                    "textStyle": {
+                      "fontFamily": "Segoe UI",
+                      "fontSize": "10pt",
+                      "color": "#52514e"
+                    }
+                  }
+                ]
+              },
+              {
+                "textRuns": [
+                  {
+                    "value": " ",
+                    "textStyle": {
+                      "fontFamily": "Segoe UI",
+                      "fontSize": "6pt"
+                    }
+                  }
+                ]
+              },
+              {
+                "textRuns": [
+                  {
+                    "value": "Renting vs buying varies a lot.",
+                    "textStyle": {
+                      "fontFamily": "Segoe UI",
+                      "fontSize": "10pt",
+                      "fontWeight": "bold",
+                      "color": "#0b0b0b"
+                    }
+                  },
+                  {
+                    "value": " A year of rent is 8.31% of the home value in Jackson, MS, but 3.00% in San Jose, CA.",
+                    "textStyle": {
+                      "fontFamily": "Segoe UI",
+                      "fontSize": "10pt",
+                      "color": "#52514e"
+                    }
+                  }
+                ]
+              },
+              {
+                "textRuns": [
+                  {
+                    "value": " ",
+                    "textStyle": {
+                      "fontFamily": "Segoe UI",
+                      "fontSize": "6pt"
+                    }
+                  }
+                ]
+              },
+              {
+                "textRuns": [
+                  {
+                    "value": "More listings, not lower prices.",
+                    "textStyle": {
+                      "fontFamily": "Segoe UI",
+                      "fontSize": "10pt",
+                      "fontWeight": "bold",
+                      "color": "#0b0b0b"
+                    }
+                  },
+                  {
+                    "value": " Across large metros, inventory change and price change are weakly positive (r = 0.30).",
+                    "textStyle": {
+                      "fontFamily": "Segoe UI",
+                      "fontSize": "10pt",
+                      "color": "#52514e"
                     }
                   }
                 ]

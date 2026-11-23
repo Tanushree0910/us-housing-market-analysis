@@ -177,6 +177,28 @@ INSERT #check SELECT 'US fact row 2026-09', '366157.15|1.19|6.33|2.5063|2',
                    CAST(ROUND(rent_to_price_pct, 2) AS DECIMAL(9, 2)), N'|', inventory_yoy_pct, N'|', days_to_pending_yoy_change)
      FROM rpt.fact_metro_month WHERE metro_id = 102001 AND month_end = '2026-09-30');
 
+/* ---------- Numbers quoted in the dashboard takeaways and README (Task 13) ---------- */
+
+-- U.S. home value and rent, Sep 2026 as an index of Sep 2015 = 100.
+INSERT #check SELECT 'US home value index 2026-09 (Sep 2015 = 100)', '187.60',
+    (SELECT CAST(CAST(ROUND(n.home_value / b.home_value * 100, 2) AS DECIMAL(9, 2)) AS NVARCHAR(30))
+     FROM core.metro_month AS n JOIN core.metro_month AS b ON b.metro_id = n.metro_id
+     WHERE n.metro_id = 102001 AND n.month_end = '2026-09-30' AND b.month_end = '2015-09-30');
+INSERT #check SELECT 'US rent index 2026-09 (Sep 2015 = 100)', '163.63',
+    (SELECT CAST(CAST(ROUND(n.rent_monthly / b.rent_monthly * 100, 2) AS DECIMAL(9, 2)) AS NVARCHAR(30))
+     FROM core.metro_month AS n JOIN core.metro_month AS b ON b.metro_id = n.metro_id
+     WHERE n.metro_id = 102001 AND n.month_end = '2026-09-30' AND b.month_end = '2015-09-30');
+
+-- Where the fastest and slowest large metros are.
+INSERT #check SELECT 'top 5 large metros in NY or CT', '4',
+    (SELECT COUNT(*) FROM (SELECT TOP (5) m.state_code FROM rpt.v_home_value_growth AS g JOIN core.metro AS m ON m.metro_id = g.metro_id
+                           WHERE g.month_end = '2026-09-30' AND m.size_rank BETWEEN 1 AND 100 AND g.yoy_pct IS NOT NULL
+                           ORDER BY g.yoy_pct DESC) AS t WHERE t.state_code IN ('NY', 'CT'));
+INSERT #check SELECT 'bottom 10 large metros in TX or FL', '7',
+    (SELECT COUNT(*) FROM (SELECT TOP (10) m.state_code FROM rpt.v_home_value_growth AS g JOIN core.metro AS m ON m.metro_id = g.metro_id
+                           WHERE g.month_end = '2026-09-30' AND m.size_rank BETWEEN 1 AND 100 AND g.yoy_pct IS NOT NULL
+                           ORDER BY g.yoy_pct ASC) AS t WHERE t.state_code IN ('TX', 'FL'));
+
 /* ---------- Report ---------- */
 
 -- Show every check, failures first.
