@@ -55,7 +55,7 @@ INSERT #check SELECT 'US inventory last month value', '1404950.0', (SELECT [2026
 -- Every region from all four files appears once.
 INSERT #check SELECT 'core.metro rows', '928', (SELECT COUNT(*) FROM core.metro);
 
--- One row per region-month that has any value, up to the latest home-value month (decision 0004).
+-- One row per region-month that has any value, up to the latest home-value month (decision 0005).
 INSERT #check SELECT 'core.metro_month rows', '240674', (SELECT COUNT(*) FROM core.metro_month);
 
 -- Non-empty values per measure must equal the non-empty CSV cells (supply files counted to 2026-09-30).
@@ -78,7 +78,7 @@ INSERT #check SELECT 'US days_to_pending 2026-09', '56',
 INSERT #check SELECT 'duplicate metro_month keys', '0',
     (SELECT COUNT(*) FROM (SELECT metro_id, month_end FROM core.metro_month GROUP BY metro_id, month_end HAVING COUNT(*) > 1) AS d);
 
--- No month after the latest home-value month (decision 0004).
+-- No month after the latest home-value month (decision 0005).
 INSERT #check SELECT 'latest month_end', '2026-09-30', (SELECT CONVERT(NVARCHAR(10), MAX(month_end), 23) FROM core.metro_month);
 
 /* ---------- Question 1: home value growth (Task 6) ---------- */

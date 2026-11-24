@@ -51,11 +51,15 @@ If anything else in the repo disagrees with this document, this document wins.
 3. Every bug found gets a bug log. Every test or validation run gets a test log.
 4. Every significant decision gets a decision record.
 
-## Article 5 — How changes are made
+## Article 5 — Branches, worktrees and merging
 
-1. Agents work on a branch, never directly on `main`.
-2. Every change must pass the automatic checks (`python3 tools/governance_check.py` and the tests) before it is merged.
-3. Only the owner approves merges into `main`.
+1. Agents never work on `main`. They never edit, commit or push in the main project folder, or on a `main` or `master` branch.
+2. Agents work only inside a git worktree at `.worktrees/<name>/`, on their own branch. They create one with:
+   `cd <project folder> && git fetch origin && git worktree add --no-track .worktrees/<name> -b <branch> origin/main`
+3. Nobody pushes to `main`, force-pushes it, deletes it or renames it. `main` changes only through a pull request.
+4. Every change must pass the automatic checks (`python3 tools/governance_check.py` and the tests) before it is merged.
+5. Merging happens only when the owner asks for it. Every merge command (`git merge`, `gh pr merge`, GitHub merge or auto-merge) needs the owner's approval in a prompt.
+6. On GitHub, the "Protect main" ruleset (`.github/rulesets/protect-main.json`, set up as described in `docs/github-setup.md`) enforces rules 3 and 4.
 
 ## Article 6 — Amendments
 
@@ -63,11 +67,53 @@ If anything else in the repo disagrees with this document, this document wins.
 2. An agent may propose an amendment. The amendment is applied only after the owner says yes.
 3. Every amendment is recorded as a decision in `docs/decisions/`, and the version line below is updated.
 
+## Article 7 — Safety
+
+1. **Always blocked:**
+   - deleting the computer's top-level folders, the home folder, the whole project or any `.git` history;
+   - force-pushing and rewriting history (`git filter-branch`, `git filter-repo`, `git reflog expire`);
+   - writing to disk devices (`mkfs`, `dd` onto a disk);
+   - running a script straight from the internet (`curl … | sh`);
+   - `chmod -R 777`; fork bombs;
+   - deleting the GitHub repository.
+2. **Ask the owner first**, for anything that throws work away:
+   - `git reset --hard`, `git clean -f`, deleting a branch with `-D`;
+   - discarding file changes (`git checkout -- …`, `git checkout .`, `git restore`);
+   - dropping stashes;
+   - force-removing a worktree;
+   - deleting a whole folder.
+
+## Article 8 — AI agents and helper agents
+
+1. **Session start.** Each agent session is told:
+   - its branch and worktree status, with a warning if anything is on `main`;
+   - how to create a worktree;
+   - the essential skills to use;
+   - the owner's rules.
+2. **Session end.** A session can't end until, for everything it changed:
+   - all work is committed and pushed;
+   - the governance check passes;
+   - the session journal is complete.
+3. **Helper agents.**
+   - Every helper (subagent or new session) must name its model: Sonnet by default, Haiku for quick simple tasks, Opus for hard reasoning.
+   - Fable is never used.
+   - "Fork" helpers, which silently copy the main session's model, are not used.
+   - Helpers follow this constitution like any other agent.
+4. **Talking to the owner.**
+   - Every command given to the owner starts with `cd` to the full folder path, git commands included.
+   - Agents never ask the owner to attach, upload or share a file or folder that is already in the project folder or the repo. They look first. If something truly can't be reached, they say where they looked.
+
 ## How these rules are enforced
 
 - **Automatic checks on GitHub** run `tools/governance_check.py` and the tests on every push and pull request.
-- **Claude Code hooks** in `.claude/` brief each agent session at start, block edits to raw data, ask the owner before any change to this document, and stop a session from ending without a complete journal.
+- **The "Protect main" ruleset on GitHub** requires pull requests and the governance check for `main`, and blocks force-pushes and deletion (`docs/github-setup.md`).
+- **Claude Code hooks** in `.claude/`:
+  - brief each agent session at start;
+  - block edits to raw data, work outside worktrees, work on `main`, pushes to `main` and dangerous commands;
+  - ask the owner before risky commands, merges and any change to this document;
+  - enforce the helper-model rules;
+  - stop a session from ending until its work is committed, pushed, checked and recorded in its journal.
 
 ---
 
-Version 1.2 — amended 2026-11-17 (decisions 0002, 0003) — amendments are recorded in `docs/decisions/`.
+Version 1.3 — amended 2026-11-24: combines version 1.1 (decision 0002, adopted 2026-11-18) with the amendments in decisions 0003 and 0004 (made 2026-11-17 on a parallel branch). Version 1.0 adopted 2026-11-17. Amendments are recorded in `docs/decisions/`.

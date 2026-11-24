@@ -89,7 +89,7 @@ You need SQL Server 2022 or later (the calendar uses `GENERATE_SERIES`), [sqlcmd
 
 ## Data
 
-All four files are from [Zillow Research](https://www.zillow.com/research/data/), at metro level, monthly and smoothed: home values (ZHVI), rents (ZORI), for-sale inventory and days to pending. The files are kept unchanged in [`data/`](data), with sources and fingerprints in [`data/SOURCES.md`](data/SOURCES.md). The analysis ends in September 2026, the latest month with home values ([decision 0004](docs/decisions/0004-zillow-only-data.md)).
+All four files are from [Zillow Research](https://www.zillow.com/research/data/), at metro level, monthly and smoothed: home values (ZHVI), rents (ZORI), for-sale inventory and days to pending. The files are kept unchanged in [`data/`](data), with sources and fingerprints in [`data/SOURCES.md`](data/SOURCES.md). The analysis ends in September 2026, the latest month with home values ([decision 0005](docs/decisions/0005-zillow-only-data.md)).
 
 "Large metros" means Zillow size rank 1–100. Those ranks hold 99 regions (no file has rank 33), and 97 of them have home values.
 
@@ -107,3 +107,4 @@ All four files are from [Zillow Research](https://www.zillow.com/research/data/)
 The rules for this repo are in [CONSTITUTION.md](CONSTITUTION.md). AI agents start from [CLAUDE.md](CLAUDE.md).
 Decisions are recorded in `docs/decisions/`, and every agent session, bug and test is logged in `logs/`.
 Run `python3 tools/governance_check.py` to check the repo. The same check runs on GitHub for every change.
+`main` is protected on GitHub by the "Protect main" ruleset (setup steps in [docs/github-setup.md](docs/github-setup.md)). AI agents work only in worktrees under `.worktrees/`, never on `main`.

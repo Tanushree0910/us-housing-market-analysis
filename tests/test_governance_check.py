@@ -362,5 +362,38 @@ class CheckerAccuracyTests(unittest.TestCase):
         self.assertEqual(len(gc.check_layout(self.repo.root)), 1)
 
 
+class GitHubGovernanceTests(unittest.TestCase):
+    def test_worktrees_folder_skipped(self):
+        repo = TempRepo()
+        try:
+            repo.write(".worktrees/x/notes.txt")
+            self.assertEqual(gc.check_layout(repo.root), [])
+        finally:
+            repo.cleanup()
+
+    def test_ruleset_protects_main(self):
+        import json
+        from tests.helpers import REPO
+        ruleset = json.loads((REPO / ".github/rulesets/protect-main.json").read_text())
+        self.assertEqual(ruleset["target"], "branch")
+        self.assertEqual(ruleset["enforcement"], "active")
+        self.assertIn("~DEFAULT_BRANCH", ruleset["conditions"]["ref_name"]["include"])
+        self.assertEqual(ruleset.get("bypass_actors", []), [])
+        rules = {rule["type"]: rule for rule in ruleset["rules"]}
+        self.assertLessEqual({"deletion", "non_fast_forward", "pull_request", "required_status_checks"},
+                             set(rules))
+        checks = rules["required_status_checks"]["parameters"]["required_status_checks"]
+        self.assertEqual([c["context"] for c in checks], ["governance"])
+        self.assertEqual(rules["pull_request"]["parameters"]["required_approving_review_count"], 0)
+
+    def test_github_files_present(self):
+        from tests.helpers import REPO
+        self.assertIn("@Tanushree0910", (REPO / ".github/CODEOWNERS").read_text())
+        template = (REPO / ".github/pull_request_template.md").read_text()
+        for heading in ("## Summary", "## Records", "## Checklist"):
+            self.assertIn(heading, template)
+        self.assertIn("Import a ruleset", (REPO / "docs/github-setup.md").read_text())
+
+
 if __name__ == "__main__":
     unittest.main()

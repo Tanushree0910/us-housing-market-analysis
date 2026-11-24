@@ -1,4 +1,4 @@
-# 0002: Keep the Power BI report as a Power BI Project plus a .pbix copy
+# 0003: Keep the Power BI report as a Power BI Project plus a .pbix copy
 
 ## Date
 2026-11-17

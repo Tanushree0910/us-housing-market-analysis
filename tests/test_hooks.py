@@ -21,7 +21,7 @@ def load(name):
 
 session_start = load("session_start")
 guard = load("guard")
-stop_journal = load("stop_journal")
+stop_journal = load("session_end")
 
 SID = "abcd1234-ffff-0000-1111-222233334444"
 GOOD_JOURNAL = ("# Session journal\n\n## Goal\ng\n\n## What changed\nc\n\n## Tests run\nt\n\n"
@@ -34,11 +34,17 @@ def git(root, *args):
 
 
 class GitRepo(TempRepo):
+    """A worktree of a throwaway repo: the folder an agent session normally works in."""
+
     def __init__(self):
         super().__init__()
-        git(self.root, "init", "-q")
+        self.main = self.root
+        git(self.main, "init", "-q", "-b", "main")
         self.write("README.md", "hi")
+        self.write(".gitignore", ".worktrees/\n.claude/state/\n")
         self.commit()
+        git(self.main, "worktree", "add", "-q", ".worktrees/w", "-b", "feature")
+        self.root = self.main / ".worktrees" / "w"
 
     def commit(self):
         git(self.root, "add", "-A")
@@ -159,6 +165,7 @@ class StopTests(unittest.TestCase):
     def test_stop_allows_with_complete_journal(self):
         self.repo.write("sql/01_a.sql", "select 1")
         self.repo.write(self.journal, GOOD_JOURNAL)
+        self.repo.commit()
         self.assertIsNone(self.stop())
 
     def test_stop_blocks_up_to_limit_then_warns(self):
@@ -175,6 +182,7 @@ class StopTests(unittest.TestCase):
         self.stop()
         self.stop(stop_hook_active=True)
         self.repo.write(self.journal, GOOD_JOURNAL)
+        self.repo.commit()
         self.assertIsNone(self.stop(stop_hook_active=True))
         self.repo.write(self.journal, GOOD_JOURNAL.replace("\ng\n", "\n_TBD_\n"))
         for _ in range(3):
@@ -207,6 +215,48 @@ class StopTests(unittest.TestCase):
         self.assertIsNone(stop_journal.decide({"session_id": other}, self.repo.root))
         self.repo.write("sql/01_a.sql", "select 1")
         self.assertEqual(stop_journal.decide({"session_id": other}, self.repo.root)["decision"], "block")
+
+
+class GuardWorktreeTests(unittest.TestCase):
+    def setUp(self):
+        from tests.helpers import make_repo_with_worktree
+        self.repo, self.wt = make_repo_with_worktree()
+
+    def tearDown(self):
+        self.repo.cleanup()
+
+    def edit(self, path, project=None):
+        return guard.decide({"tool_name": "Edit", "tool_input": {"file_path": str(path)}},
+                            project or self.repo.root)
+
+    def test_guard_denies_raw_csv_inside_worktree(self):
+        self.assertEqual(decision(self.edit(self.wt / "data" / "a.csv")), "deny")
+        self.assertEqual(decision(self.edit(self.wt / "data" / "a.csv", project=self.wt)), "deny")
+        self.assertEqual(decision(guard.decide(
+            {"tool_name": "Bash", "tool_input": {"command": f"cd {self.wt} && rm data/a.csv"}},
+            self.repo.root)), "deny")
+
+    def test_guard_asks_for_constitution_inside_worktree(self):
+        self.assertEqual(decision(self.edit(self.wt / "CONSTITUTION.md")), "ask")
+
+    def test_guard_allows_worktree_sql(self):
+        self.assertIsNone(self.edit(self.wt / "sql" / "01_a.sql"))
+
+
+class GuardFolderTests(unittest.TestCase):
+    def test_guard_judges_relative_paths_from_the_command_folder(self):
+        from tests.helpers import make_repo_with_worktree
+        repo, wt = make_repo_with_worktree()
+        try:
+            (wt / "data").mkdir()
+            inside = guard.decide({"tool_name": "Bash", "tool_input": {"command": "rm housing.csv"},
+                                   "cwd": str(wt / "data")}, repo.root)
+            self.assertEqual(decision(inside), "deny")
+            elsewhere = guard.decide({"tool_name": "Bash", "tool_input": {"command": "rm data/housing.csv"},
+                                      "cwd": "/tmp"}, repo.root)
+            self.assertIsNone(elsewhere)
+        finally:
+            repo.cleanup()
 
 
 class GuardPrecisionTests(unittest.TestCase):
@@ -299,7 +349,7 @@ class WorkflowTests(unittest.TestCase):
 
 class ScriptTests(unittest.TestCase):
     def test_hook_script_survives_garbage_stdin(self):
-        for name in ("session_start", "guard", "stop_journal"):
+        for name in ("session_start", "guard", "git_guard", "agent_guard", "session_end"):
             run = subprocess.run([sys.executable, str(HOOKS / f"{name}.py")], input="not json",
                                  capture_output=True, text=True)
             self.assertEqual(run.returncode, 0, name)

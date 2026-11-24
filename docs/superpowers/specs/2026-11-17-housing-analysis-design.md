@@ -47,7 +47,7 @@ All four files are "wide": the first 5 columns are `RegionID, SizeRank, RegionNa
 
 - The repo in the cloud session is the source of truth for all text files.
 - The owner's Windows PC runs SQL Server, sqlcmd and Power BI Desktop. The agent works on it through the Claude desktop app's computer connection, which the owner approved. The PC working folder is the owner's `housing data` folder on the Desktop, which holds the CSVs.
-- Binary files (`.pbix`, `.png`) and new raw data the owner downloaded are committed and pushed from a git clone on the PC (decision 0003).
+- Binary files (`.pbix`, `.png`) and new raw data the owner downloaded are committed and pushed from a git clone on the PC (decision 0004).
 
 ### SQL design (agent's call)
 

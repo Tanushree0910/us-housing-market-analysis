@@ -17,7 +17,7 @@ days_to_pending: header0='RegionID' rows=716 month_cols=104 first=2018-03-31 las
 distinct RegionID across 4 files: 928
 ```
 
-- Limited to months up to 2026-09-30 (the analysis window, decision 0004): inventory 103 month columns and 94391 non-empty values; days to pending 103 month columns and 50769 non-empty values. All supply values are whole numbers written as `N.0`.
+- Limited to months up to 2026-09-30 (the analysis window, decision 0005): inventory 103 month columns and 94391 non-empty values; days to pending 103 month columns and 50769 non-empty values. All supply values are whole numbers written as `N.0`.
 
 - `python -m unittest discover -s tests -t .`: first run 1 error (symlink test, BUG-001); after the fix 79 tests run, 78 pass and 1 is skipped on Windows (it runs on GitHub's Linux CI).
 

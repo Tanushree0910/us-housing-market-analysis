@@ -1,4 +1,4 @@
-# 0003: Agents add the owner's downloaded data files and handle git
+# 0004: Agents add the owner's downloaded data files and handle git
 
 ## Date
 2026-11-17

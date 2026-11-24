@@ -20,7 +20,7 @@
 - Page names, in order: `Overview`, `1 · Growth`, `2 · Rent vs price`, `3 · Supply`.
 - "Large metros" means `size_rank BETWEEN 1 AND 100`. "Latest month" means `2026-09-30`.
 - After each task: run `python3 tools/governance_check.py` and `python3 -m unittest discover -s tests -t .`, add a test log in `logs/tests/`, then commit.
-- Text files are written in the cloud repo and copied to the PC with `_host`. Files that Power BI saves are read back into the repo. Binary files (`.pbix`, `.png`) are committed and pushed from the PC clone (decision 0003); text files may be too.
+- Text files are written in the cloud repo and copied to the PC with `_host`. Files that Power BI saves are read back into the repo. Binary files (`.pbix`, `.png`) are committed and pushed from the PC clone (decision 0004); text files may be too.
 
 ## Review Focus
 
@@ -36,7 +36,7 @@
 
 - [ ] **Step 1:** The owner connects the PC: in the Claude desktop app, go to Settings → Claude Code → Remote Control and add the `housing data` folder. The agent calls `list_computer_folders` and then `request_computer_folder`, and the owner approves.
 - [ ] **Step 2:** The agent checks `git --version` on the PC and that git can reach GitHub (`git ls-remote https://github.com/tanushree0910/us-housing-market-analysis`). If git is missing or not signed in, ask the owner before installing or signing in.
-- [ ] **Step 3:** Clone the repo into the shared folder (`housing data\us-housing-market-analysis`) and check out `claude/charming-rubin-9jw9w3`. Copy the two new Zillow files the owner downloaded into its `data/` unchanged. Commit and push from the PC (decision 0003). In the cloud repo, pull. Expected: `data/` holds 4 CSVs, and the checker reports exactly 2 problems, the missing SOURCES rows (fixed in Task 2).
+- [ ] **Step 3:** Clone the repo into the shared folder (`housing data\us-housing-market-analysis`) and check out `claude/charming-rubin-9jw9w3`. Copy the two new Zillow files the owner downloaded into its `data/` unchanged. Commit and push from the PC (decision 0004). In the cloud repo, pull. Expected: `data/` holds 4 CSVs, and the checker reports exactly 2 problems, the missing SOURCES rows (fixed in Task 2).
 
 ### Task 1: Constitution amendment and checker support for Power BI Project files
 
@@ -45,7 +45,7 @@
 - Modify: `tools/governance_check.py:9-22` (`check_layout`)
 - Modify: `CONSTITUTION.md` (Article 3 `powerbi/` row, version line → 1.1). The owner says yes at the hook prompt.
 - Modify: `.gitignore` (add `powerbi/**/.pbi/localSettings.json` and `powerbi/**/.pbi/cache.abf`)
-- Create: `docs/decisions/0002-power-bi-project-format.md` (Status `Accepted`)
+- Create: `docs/decisions/0003-power-bi-project-format.md` (Status `Accepted`)
 - Test: `tests/test_governance_check.py` (class `LayoutTests`)
 
 **Interfaces:**
@@ -79,14 +79,14 @@ def test_powerbi_other_file_type_flagged(self):
 - [ ] **Step 2:** Run `python3 -m unittest tests.test_governance_check -v`. Expected: `test_powerbi_project_files_allowed` FAILS, with a "must not contain sub-folders" problem and a wrong-name problem for `.pbip`.
 - [ ] **Step 3:** In `check_layout`, a `powerbi/` path with more than 2 parts is allowed when `parts[1]` matches `POWERBI_PROJECT_DIR`; otherwise it's flagged as now. Widen the top-level `powerbi` regex and its hint to `snake_case.pbix, snake_case.pbip, or the snake_case.SemanticModel/ and snake_case.Report/ folders Power BI creates`.
 - [ ] **Step 4:** Run all tests. Expected: all PASS (79 tests).
-- [ ] **Step 5:** Edit `CONSTITUTION.md` Article 3, with the owner's yes. Change the 2nd rule to "These folders accept only these files, and have no sub-folders except the Power BI project folders below". Change the `powerbi/` row to `snake_case.pbix`, `snake_case.pbip`, and the `snake_case.SemanticModel/` and `snake_case.Report/` folders Power BI Desktop creates (any contents), with example `us_housing_market.pbip`. Change the version line to `Version 1.1 — amended 2026-11-17 (decision 0002)`. Update `CLAUDE.md` only if it repeats the old rule.
-- [ ] **Step 6:** Write decision 0002: Power BI Project format (owner chose option B), the alternative of a `.pbix` only, and the amendment it required. Run the checker and the tests, write the test log `logs/tests/2026-11-17-powerbi-project-layout.md`, then commit: `feat: allow Power BI project folders (constitution 1.1)`.
+- [ ] **Step 5:** Edit `CONSTITUTION.md` Article 3, with the owner's yes. Change the 2nd rule to "These folders accept only these files, and have no sub-folders except the Power BI project folders below". Change the `powerbi/` row to `snake_case.pbix`, `snake_case.pbip`, and the `snake_case.SemanticModel/` and `snake_case.Report/` folders Power BI Desktop creates (any contents), with example `us_housing_market.pbip`. Change the version line to `Version 1.1 — amended 2026-11-17 (decision 0003)`. Update `CLAUDE.md` only if it repeats the old rule.
+- [ ] **Step 6:** Write decision 0003: Power BI Project format (owner chose option B), the alternative of a `.pbix` only, and the amendment it required. Run the checker and the tests, write the test log `logs/tests/2026-11-17-powerbi-project-layout.md`, then commit: `feat: allow Power BI project folders (constitution 1.1)`.
 
 ### Task 2: Register the new raw files
 
 **Files:**
 - Modify: `data/SOURCES.md` (2 rows)
-- Create: `docs/decisions/0004-zillow-only-data.md` (Status `Accepted`: Redfin dropped; question 3 uses Zillow inventory and days to pending)
+- Create: `docs/decisions/0005-zillow-only-data.md` (Status `Accepted`: Redfin dropped; question 3 uses Zillow inventory and days to pending)
 
 - [ ] **Step 1:** Run `python3 tools/governance_check.py`. Expected: FAIL, naming both new CSVs as having no SOURCES row.
 - [ ] **Step 2:** For each new file, add a row with Source `Zillow Research — For-Sale Inventory, metro, monthly, smoothed` or `Zillow Research — Days to Pending, metro, monthly, smoothed`, URL `https://www.zillow.com/research/data/`, Added = the date it is committed, and SHA-256 from `python3 tools/governance_check.py --fingerprint data/<file>`.

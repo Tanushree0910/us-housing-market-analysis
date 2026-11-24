@@ -10,3 +10,4 @@ desktop.ini
 ~$*
 powerbi/**/.pbi/localSettings.json
 powerbi/**/.pbi/cache.abf
+.worktrees/

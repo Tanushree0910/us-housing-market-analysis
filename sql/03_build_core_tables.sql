@@ -4,7 +4,7 @@
     core.metro        - one row per region (union of all four files)
     core.metro_month  - one row per region per month with all four measures side by side
   The wide-to-long unpivot is generated with dynamic SQL from the month columns that exist,
-  so no month is typed by hand. Months after the latest home-value month are left out (decision 0004).
+  so no month is typed by hand. Months after the latest home-value month are left out (decision 0005).
   Safe to re-run: both tables are dropped and rebuilt.
   Run: sqlcmd -S localhost -E -C -b -I -i sql/03_build_core_tables.sql
 */
@@ -84,7 +84,7 @@ END;
 CLOSE table_cursor;
 DEALLOCATE table_cursor;
 
--- Stop at the latest month that has home values, so every measure shares one window (decision 0004).
+-- Stop at the latest month that has home values, so every measure shares one window (decision 0005).
 DECLARE @latest DATE = (SELECT MAX(month_end) FROM #long WHERE measure = 1);
 
 -- One row per region-month: pivot the four measures side by side, rounded to the column types.
