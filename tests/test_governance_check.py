@@ -53,6 +53,27 @@ class LayoutTests(unittest.TestCase):
         self.assertEqual(len(problems), 1)
         self.assertIn("README.md", problems[0])
 
+    def test_powerbi_project_files_allowed(self):
+        self.repo.write("powerbi/us_housing_market.pbip")
+        self.repo.write("powerbi/us_housing_market.pbix")
+        self.repo.write("powerbi/us_housing_market.SemanticModel/definition/tables/fact_metro_month.tmdl")
+        self.repo.write("powerbi/us_housing_market.Report/definition/pages/overview/page.json")
+        self.assertEqual(gc.check_layout(self.repo.root), [])
+
+    def test_powerbi_unknown_subfolder_flagged(self):
+        self.repo.write("powerbi/old/report.pbix")
+        problems = gc.check_layout(self.repo.root)
+        self.assertEqual(len(problems), 1)
+        self.assertIn("powerbi/old/report.pbix", problems[0])
+
+    def test_powerbi_bad_project_name_flagged(self):
+        self.repo.write("powerbi/Housing.Report/definition.pbir")
+        self.assertEqual(len(gc.check_layout(self.repo.root)), 1)
+
+    def test_powerbi_other_file_type_flagged(self):
+        self.repo.write("powerbi/notes.txt")
+        self.assertEqual(len(gc.check_layout(self.repo.root)), 1)
+
     def test_git_dir_ignored(self):
         self.repo.write(".git/whatever")
         self.repo.write(".superpowers/sdd/x.md")

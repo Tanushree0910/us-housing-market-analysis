@@ -1,0 +1,82 @@
+{
+  "name": "Navy header",
+  "dataColors": [
+    "#2a78d6",
+    "#eb6834",
+    "#0d366b",
+    "#898781",
+    "#006300",
+    "#b3261e",
+    "#7aa6e0",
+    "#f3a27f"
+  ],
+  "background": "#f9f9f7",
+  "foreground": "#0b0b0b",
+  "tableAccent": "#2a78d6",
+  "good": "#006300",
+  "bad": "#b3261e",
+  "neutral": "#898781",
+  "textClasses": {
+    "callout": {
+      "fontFace": "Segoe UI",
+      "color": "#0b0b0b"
+    },
+    "title": {
+      "fontFace": "Segoe UI",
+      "color": "#0b0b0b"
+    },
+    "header": {
+      "fontFace": "Segoe UI",
+      "color": "#0b0b0b"
+    },
+    "label": {
+      "fontFace": "Segoe UI",
+      "color": "#52514e"
+    }
+  },
+  "visualStyles": {
+    "*": {
+      "*": {
+        "background": [
+          {
+            "show": true,
+            "color": {
+              "solid": {
+                "color": "#fcfcfb"
+              }
+            },
+            "transparency": 0
+          }
+        ],
+        "*": [
+          {
+            "fontFamily": "Segoe UI"
+          }
+        ]
+      }
+    },
+    "page": {
+      "*": {
+        "background": [
+          {
+            "color": {
+              "solid": {
+                "color": "#f9f9f7"
+              }
+            },
+            "transparency": 0
+          }
+        ],
+        "outspace": [
+          {
+            "color": {
+              "solid": {
+                "color": "#f9f9f7"
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,44 @@
+table dim_month
+	lineageTag: bd582f66-71c7-4b0a-ae70-4aaaacee2cf9
+	dataCategory: Time
+
+	column month_end
+		dataType: dateTime
+		isKey
+		formatString: mmm yyyy
+		lineageTag: 241fd93c-0d63-4e40-b35d-0f064133ae37
+		summarizeBy: none
+		sourceColumn: month_end
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column year
+		dataType: int64
+		formatString: 0
+		lineageTag: 3edd0413-ab6e-4649-a37a-65f7950066fa
+		summarizeBy: none
+		sourceColumn: year
+
+	column month_num
+		dataType: int64
+		formatString: 0
+		lineageTag: e99a40fa-6ad2-40fd-85cd-1b2b142bc8ed
+		summarizeBy: none
+		sourceColumn: month_num
+
+	column month_label
+		dataType: string
+		lineageTag: 47f83ef4-99fd-4958-997d-e93ce02c20e7
+		summarizeBy: none
+		sourceColumn: month_label
+		sortByColumn: month_end
+
+	partition dim_month = m
+		mode: import
+		source =
+				let
+					Source = Sql.Database(SqlServer, SqlDatabase),
+					rpt_view = Source{[Schema = "rpt", Item = "dim_month"]}[Data]
+				in
+					rpt_view
+

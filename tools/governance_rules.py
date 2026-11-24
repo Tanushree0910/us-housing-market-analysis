@@ -19,14 +19,18 @@ ALLOWED_TOP_LEVEL = {
 FOLDER_RULES = {
     "data": re.compile(r"^((?i:.+\.csv)|SOURCES\.md|\.gitkeep)$"),
     "sql": re.compile(r"^(\d{2}_[a-z0-9_]+\.sql|\.gitkeep)$"),
-    "powerbi": re.compile(r"^([a-z0-9_]+\.pbix|\.gitkeep)$"),
+    "powerbi": re.compile(r"^([a-z0-9_]+\.(pbix|pbip)|\.gitkeep)$"),
     "screenshots": re.compile(r"^([a-z0-9-]+\.(png|jpg)|\.gitkeep)$"),
 }
+
+# Article 3: the only sub-folders allowed in powerbi/, made by Power BI Desktop.
+POWERBI_PROJECT_DIR = re.compile(r"^[a-z0-9_]+\.(SemanticModel|Report)$")
 
 FOLDER_HINTS = {
     "data": "raw .csv files, SOURCES.md or .gitkeep",
     "sql": "NN_snake_case.sql, e.g. 01_load_zhvi.sql",
-    "powerbi": "snake_case.pbix",
+    "powerbi": ("snake_case.pbix, snake_case.pbip, or the snake_case.SemanticModel/ "
+                "and snake_case.Report/ folders Power BI creates"),
     "screenshots": "kebab-case.png or kebab-case.jpg",
 }
 

@@ -18,19 +18,20 @@ If anything else in the repo disagrees with this document, this document wins.
 
 1. `data/` holds raw source files exactly as they were downloaded.
 2. Raw files are never edited, renamed or deleted without the owner's approval.
-3. Every raw file has a row in `data/SOURCES.md` with its file name, source, URL, date added and SHA-256 fingerprint. The fingerprint proves the file has not been changed.
-4. Cleaned or derived data is produced by SQL. It is never saved over a raw file.
+3. The owner chooses and downloads raw data. An agent may copy a file the owner downloaded into `data/` unchanged, under its original name, and commit, push and pull it with git.
+4. Every raw file has a row in `data/SOURCES.md` with its file name, source, URL, date added and SHA-256 fingerprint. The fingerprint proves the file has not been changed.
+5. Cleaned or derived data is produced by SQL. It is never saved over a raw file.
 
 ## Article 3 — Folders and naming
 
 1. Only these items may sit at the top of the repo: `README.md`, `CONSTITUTION.md`, `CLAUDE.md`, `.gitignore`, `data/`, `sql/`, `powerbi/`, `screenshots/`, `docs/`, `logs/`, `tools/`, `tests/`, `.github/`, `.claude/`.
-2. These folders have no sub-folders and accept only these files:
+2. These folders accept only these files, and have no sub-folders except the Power BI project folders below:
 
 | Folder | Allowed files | Example |
 |---|---|---|
 | `data/` | raw `.csv` files (original source names), `SOURCES.md` | `Metro_zori_uc_sfrcondomfr_sm_month.csv` |
 | `sql/` | `NN_snake_case.sql`, numbered in run order | `01_load_zhvi.sql` |
-| `powerbi/` | `snake_case.pbix` | `housing_dashboard.pbix` |
+| `powerbi/` | `snake_case.pbix`, `snake_case.pbip`, and the `snake_case.SemanticModel/` and `snake_case.Report/` folders Power BI Desktop creates (any contents) | `us_housing_market.pbip` |
 | `screenshots/` | `kebab-case.png` or `.jpg` | `rent-to-price-map.png` |
 
 3. No file may be larger than 50 MB.
@@ -115,4 +116,4 @@ If anything else in the repo disagrees with this document, this document wins.
 
 ---
 
-Version 1.1 — adopted 2026-11-18 (version 1.0 adopted 2026-11-17) — amendments are recorded in `docs/decisions/`.
+Version 1.3 — amended 2026-11-24: combines version 1.1 (decision 0002, adopted 2026-11-18) with the amendments in decisions 0003 and 0004 (made 2026-11-17 on a parallel branch). Version 1.0 adopted 2026-11-17. Amendments are recorded in `docs/decisions/`.

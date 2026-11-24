@@ -327,7 +327,11 @@ class GuardPrecisionTests(unittest.TestCase):
             real = repo.root / "real"
             (real / "data").mkdir(parents=True)
             link = repo.root / "link"
-            link.symlink_to(real)
+            try:
+                link.symlink_to(real)
+            except OSError as error:
+                # Windows refuses symlinks without admin rights or Developer Mode (WinError 1314).
+                self.skipTest(f"symlinks not permitted here: {error}")
             result = guard.decide({"tool_name": "Edit",
                                    "tool_input": {"file_path": str(real / "data" / "a.csv")}}, link)
             self.assertEqual(decision(result), "deny")
