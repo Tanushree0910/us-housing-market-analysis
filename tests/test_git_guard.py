@@ -182,5 +182,28 @@ class GitGuardTests(unittest.TestCase):
         self.assertIn("Article 5", reason)
 
 
+class WindowsPathTokenTests(unittest.TestCase):
+    """BUG-003: Windows drive paths keep their backslashes when commands are split."""
+
+    def setUp(self):
+        import shellparse
+        self.tokens = shellparse.tokens
+
+    def test_unquoted_drive_path_keeps_backslashes(self):
+        self.assertEqual(self.tokens(r"cd C:\Users\me\wt && git commit -m y"),
+                         ["cd", r"C:\Users\me\wt", "&&", "git", "commit", "-m", "y"])
+        self.assertEqual(self.tokens(r"rm -rf C:\Users\me"), ["rm", "-rf", r"C:\Users\me"])
+        self.assertEqual(self.tokens(r"git -C d:\work\wt commit"), ["git", "-C", r"d:\work\wt", "commit"])
+
+    def test_quoted_drive_path_keeps_backslashes(self):
+        self.assertEqual(self.tokens(r'cd "C:\Users\me\my wt"'), ["cd", r"C:\Users\me\my wt"])
+        self.assertEqual(self.tokens(r"cd 'C:\Users\me\my wt'"), ["cd", r"C:\Users\me\my wt"])
+        self.assertEqual(self.tokens(r'cd C:\Users\"my wt"\x'), ["cd", r"C:\Users\my wt\x"])
+
+    def test_posix_escapes_unchanged(self):
+        self.assertEqual(self.tokens(r"echo a\ b \$HOME C:/Users/me"), ["echo", "a b", "$HOME", "C:/Users/me"])
+        self.assertEqual(self.tokens(r'echo "x\"y" a\\b'), ["echo", 'x"y', r"a\b"])
+
+
 if __name__ == "__main__":
     unittest.main()

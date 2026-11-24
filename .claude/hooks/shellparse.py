@@ -36,8 +36,53 @@ def absolute(base: Path, path_text: str, cwd: Path | None = None) -> Path:
     return path.resolve(strict=False)
 
 
+WORD_BREAKS = set(" \t\r\n;&|()<>")
+DRIVE_PATH = re.compile(r"[A-Za-z]:\\")
+
+
+def _keep_drive_backslashes(line: str) -> str:
+    """Double the backslashes of unquoted Windows drive paths so shlex keeps them.
+
+    In a POSIX shell an unquoted backslash escapes the next character, so shlex
+    reads C:\\Users\\me as C:Usersme. Commands given on Windows use such paths
+    (BUG-003), so in a word that starts with a drive letter ('C:\\', also after
+    '=') a backslash is a path separator, except before whitespace, where it
+    still escapes the space. Quoted text and every other word are left alone:
+    shlex already keeps backslashes in quotes unless they escape a quote.
+    """
+    out, quote, in_path, i = [], None, False, 0
+    while i < len(line):
+        ch = line[i]
+        if quote:
+            if quote == '"' and ch == "\\" and i + 1 < len(line):
+                out.append(line[i:i + 2])
+                i += 2
+                continue
+            if ch == quote:
+                quote = None
+        elif ch in "'\"":
+            quote = ch
+        elif ch in WORD_BREAKS:
+            in_path = False
+        elif ch == "\\":
+            following = line[i + 1:i + 2]
+            if in_path and following and not following.isspace():
+                out.append("\\\\")
+                i += 1
+                continue
+            out.append(line[i:i + 2])
+            i += 2
+            continue
+        elif (i == 0 or line[i - 1] in WORD_BREAKS or line[i - 1] == "=") and DRIVE_PATH.match(line, i):
+            in_path = True
+        out.append(ch)
+        i += 1
+    return "".join(out)
+
+
 def tokens(line: str) -> list[str]:
     """Shell words of one line. Like bash, '#' starts a comment only at the start of a word."""
+    line = _keep_drive_backslashes(line)
     try:
         lexer = shlex.shlex(line, posix=True, punctuation_chars=True)
         lexer.whitespace_split = True
