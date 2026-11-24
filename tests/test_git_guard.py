@@ -1,4 +1,5 @@
 import importlib.util
+import os
 import sys
 import unittest
 
@@ -203,6 +204,63 @@ class WindowsPathTokenTests(unittest.TestCase):
     def test_posix_escapes_unchanged(self):
         self.assertEqual(self.tokens(r"echo a\ b \$HOME C:/Users/me"), ["echo", "a b", "$HOME", "C:/Users/me"])
         self.assertEqual(self.tokens(r'echo "x\"y" a\\b'), ["echo", 'x"y', r"a\b"])
+
+
+def git_bash(path):
+    """A Windows path in Git Bash form: C:\\Users\\me becomes /c/Users/me."""
+    text = str(path).replace("\\", "/")
+    return f"/{text[0].lower()}{text[2:]}" if text[1:2] == ":" else text
+
+
+class GitBashPathTests(unittest.TestCase):
+    """BUG-004: Git Bash drive paths (/c/Users/...) are read as drive paths on Windows."""
+
+    def setUp(self):
+        import shellparse
+        self.convert = shellparse.from_git_bash
+
+    def test_conversion_on_windows(self):
+        self.assertEqual(self.convert("/c/Users/me", windows=True), "C:/Users/me")
+        self.assertEqual(self.convert("/D/work", windows=True), "D:/work")
+        self.assertEqual(self.convert("/c", windows=True), "C:/")
+        self.assertEqual(self.convert("/c/", windows=True), "C:/")
+
+    def test_other_paths_unchanged(self):
+        for text in ("/cd/x", "/tmp/x", "c/x", "./c/x", "C:/x", r"C:\x", "//c/x", "~", ""):
+            self.assertEqual(self.convert(text, windows=True), text, text)
+
+    def test_never_converted_off_windows(self):
+        for text in ("/c/Users/me", "/c", "/tmp/x"):
+            self.assertEqual(self.convert(text, windows=False), text, text)
+
+
+@unittest.skipUnless(os.name == "nt", "Git Bash /c/... paths exist only on Windows")
+class GitBashGuardTests(unittest.TestCase):
+    """BUG-004 end to end: the git guard judges /c/... paths like C:\\... paths."""
+
+    def setUp(self):
+        self.repo, self.wt = make_repo_with_worktree()
+        self.root = self.repo.root.resolve()
+        self.wt = self.wt.resolve()
+
+    def tearDown(self):
+        self.repo.cleanup()
+
+    def bash(self, command):
+        return git_guard.decide({"tool_name": "Bash", "tool_input": {"command": command},
+                                 "cwd": str(self.root)}, self.root)
+
+    def test_main_folder_commit_denied(self):
+        self.assertEqual(decision(self.bash(f'cd /c && cd "{git_bash(self.root)}" && git commit -m x')), "deny")
+        self.assertEqual(decision(self.bash(f"cd /c && git -C {git_bash(self.root)} commit -m x")), "deny")
+
+    def test_worktree_commit_allowed(self):
+        self.assertIsNone(self.bash(f'cd "{git_bash(self.wt)}" && git commit -m x'))
+        self.assertIsNone(self.bash(f"git -C {git_bash(self.wt)} commit -m x"))
+
+    def test_rm_rf_of_project_denied(self):
+        self.assertEqual(decision(self.bash(f"cd /c && rm -rf {git_bash(self.root)}")), "deny")
+        self.assertEqual(decision(self.bash(f'cd /c && rm -rf "{git_bash(self.wt.parent.parent)}"')), "deny")
 
 
 if __name__ == "__main__":

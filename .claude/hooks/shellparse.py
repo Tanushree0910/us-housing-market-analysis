@@ -28,9 +28,25 @@ WRAPPER_VALUE_OPTIONS = {
 GIT_VALUE_OPTIONS = {"-C", "-c", "--git-dir", "--work-tree", "--namespace"}
 
 
+GIT_BASH_DRIVE = re.compile(r"/([A-Za-z])(?=/|$)/?")
+
+
+def from_git_bash(path_text: str, windows: bool | None = None) -> str:
+    """A Git Bash drive path (/c/Users/me) as a Windows one (C:/Users/me); others unchanged.
+
+    Git Bash, the shell behind Claude Code's Bash tool on Windows, writes drive
+    paths that way, and pathlib on Windows would read /c/Users as C:\\c\\Users
+    (BUG-004). Only done on Windows: on Linux /c is an ordinary folder.
+    """
+    if not (os.name == "nt" if windows is None else windows):
+        return path_text
+    drive = GIT_BASH_DRIVE.match(path_text)
+    return f"{drive.group(1).upper()}:/{path_text[drive.end():]}" if drive else path_text
+
+
 def absolute(base: Path, path_text: str, cwd: Path | None = None) -> Path:
     """path_text as a resolved absolute path, relative paths taken from cwd (default base)."""
-    path = Path(os.path.expanduser(path_text))
+    path = Path(from_git_bash(os.path.expanduser(path_text)))
     if not path.is_absolute():
         path = Path(cwd or base) / path
     return path.resolve(strict=False)
