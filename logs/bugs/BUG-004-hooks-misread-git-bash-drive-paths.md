@@ -1,7 +1,7 @@
 # BUG-004: Hooks misread Git Bash drive paths like /c/Users/...
 
 ## Status
-Open
+Fixed
 
 ## Found
 2026-11-24, agent session 3ec9f889 on the owner's PC, while fixing [BUG-003](BUG-003-git-guard-tests-fail-on-windows.md).
@@ -20,7 +20,7 @@ So the main-folder rule fails open for Git Bash paths. The same path reading is 
 `shellparse.absolute` passes the path straight to `pathlib.Path`, which does not know the MSYS/Git Bash `/<drive>/...` form.
 
 ## Fix
-Not fixed yet. Suggested fix: on Windows only (`os.name == "nt"`), turn a leading `/<letter>/` (or a bare `/<letter>`) into `<LETTER>:/` in `shellparse.absolute` before resolving, and add tests for the main-folder, worktree, raw-data and `rm` cases. It was kept out of the BUG-003 fix because it has a different cause.
+Fixed 2026-11-24 on branch `claude/hooks-gitbash-paths`. New `shellparse.from_git_bash` turns a leading `/<letter>/` or a bare `/<letter>` into `<LETTER>:/`, only when `os.name == "nt"`. `shellparse.absolute` calls it before building the path, so every check that reads paths through it (main-folder and worktree checks for `cd` and `git -C`, raw-data checks, `rm -r` checks, edit paths) now sees the real folder. Paths like `/cd/x`, `/tmp/x` and `//c/x` are left alone, and Linux behaviour is unchanged.
 
 ## Test log
-None yet. Found during [2026-11-24-hooks-windows-paths.md](../tests/2026-11-24-hooks-windows-paths.md).
+[2026-11-24-hooks-gitbash-paths.md](../tests/2026-11-24-hooks-gitbash-paths.md). Found during [2026-11-24-hooks-windows-paths.md](../tests/2026-11-24-hooks-windows-paths.md).

@@ -1,6 +1,7 @@
 import datetime
 import importlib.util
 import json
+import os
 import subprocess
 import sys
 import unittest
@@ -241,6 +242,32 @@ class GuardWorktreeTests(unittest.TestCase):
 
     def test_guard_allows_worktree_sql(self):
         self.assertIsNone(self.edit(self.wt / "sql" / "01_a.sql"))
+
+
+@unittest.skipUnless(os.name == "nt", "Git Bash /c/... paths exist only on Windows")
+class GuardGitBashTests(unittest.TestCase):
+    """BUG-004: raw data is protected when named with a Git Bash path (/c/Users/...)."""
+
+    def setUp(self):
+        from tests.helpers import make_repo_with_worktree
+        from tests.test_git_guard import git_bash
+        self.repo, self.wt = make_repo_with_worktree()
+        self.git_bash = git_bash
+
+    def tearDown(self):
+        self.repo.cleanup()
+
+    def test_guard_denies_raw_data_delete_via_git_bash_path(self):
+        for folder in (self.repo.root.resolve(), self.wt.resolve()):
+            csv = self.git_bash(folder / "data" / "a.csv")
+            for command in (f"cd /c && rm {csv}",
+                            f'cd "{self.git_bash(folder)}" && rm data/a.csv',
+                            f"cd /c && echo x > {csv}"):
+                result = guard.decide({"tool_name": "Bash", "tool_input": {"command": command}},
+                                      self.repo.root)
+                self.assertEqual(decision(result), "deny", command)
+            edit = guard.decide({"tool_name": "Edit", "tool_input": {"file_path": csv}}, self.repo.root)
+            self.assertEqual(decision(edit), "deny", csv)
 
 
 class GuardFolderTests(unittest.TestCase):
